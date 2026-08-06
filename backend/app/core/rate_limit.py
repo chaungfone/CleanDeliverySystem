@@ -39,7 +39,9 @@ def auth_rate_key(request: Request) -> str:
 def redis_reachable(uri: str, timeout: float = _REDIS_PING_TIMEOUT) -> bool:
     """Best-effort liveness probe for the configured Redis URL.
 
-    Never raises: a failed probe just means "fall back to in-memory".
+    Uses RESP2 (protocol=2) for compatibility with older Redis servers that
+    do not implement the Redis 6+ HELLO handshake. Never raises: a failed
+    probe just means "fall back to in-memory".
     """
     try:
         client = redis.from_url(
@@ -47,6 +49,7 @@ def redis_reachable(uri: str, timeout: float = _REDIS_PING_TIMEOUT) -> bool:
             socket_connect_timeout=timeout,
             socket_timeout=timeout,
             decode_responses=True,
+            protocol=2,
         )
         return bool(client.ping())
     except Exception as exc:  # noqa: BLE001 - probe must never crash startup
@@ -54,17 +57,18 @@ def redis_reachable(uri: str, timeout: float = _REDIS_PING_TIMEOUT) -> bool:
         return False
 
 
-def select_storage() -> str:
-    """Choose the rate-limiter storage URI.
+def select_storage() -> tuple[str, dict]:
+    """Choose the rate-limiter storage URI + options.
 
-    - settings.REDIS_URL set AND reachable  -> use Redis (persistent, multi-instance)
+    - settings.REDIS_URL set AND reachable  -> use Redis (persistent, multi-instance),
+      with RESP2 options for older Redis servers
     - settings.REDIS_URL set but unreachable -> in-memory fallback + startup WARNING
     - settings.REDIS_URL unset              -> in-memory (offline dev), INFO log
     """
     redis_url = (settings.REDIS_URL or "").strip()
     if redis_url and redis_reachable(redis_url):
         logger.info("Rate limiter using Redis storage: %s", redis_url)
-        return redis_url
+        return redis_url, {"protocol": 2}
     if redis_url:
         logger.warning(
             "REDIS_URL=%s configured but unreachable; falling back to in-memory rate limiting.",
@@ -72,12 +76,15 @@ def select_storage() -> str:
         )
     else:
         logger.info("REDIS_URL not configured; rate limiter using in-memory storage.")
-    return "memory://"
+    return "memory://", {}
 
+
+_storage_uri, _storage_options = select_storage()
 
 limiter = Limiter(
     key_func=get_remote_address,
-    storage_uri=select_storage(),
+    storage_uri=_storage_uri,
+    storage_options=_storage_options,
 )
 
 # Strict enforcement in production; allow dev/tests to run unthrottled.

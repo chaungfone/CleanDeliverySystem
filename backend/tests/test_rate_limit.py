@@ -94,10 +94,11 @@ def test_redis_storage_selected_when_reachable(monkeypatch):
 
     monkeypatch.setattr(rate_limit.settings, "REDIS_URL", "redis://localhost:6379/0")
     monkeypatch.setattr(rate_limit, "redis_reachable", lambda uri, timeout=1.0: True)
-    uri = rate_limit.select_storage()
+    uri, options = rate_limit.select_storage()
     assert uri == "redis://localhost:6379/0"
+    assert options == {"protocol": 2}
 
-    limiter = Limiter(key_func=lambda: "test", storage_uri=uri)
+    limiter = Limiter(key_func=lambda: "test", storage_uri=uri, storage_options=options)
     assert isinstance(limiter._limiter.storage, RedisStorage)
 
 
@@ -109,7 +110,9 @@ def test_memory_storage_fallback_when_redis_unreachable(monkeypatch):
 
     monkeypatch.setattr(rate_limit.settings, "REDIS_URL", "redis://localhost:6399/0")
     monkeypatch.setattr(rate_limit, "redis_reachable", lambda uri, timeout=1.0: False)
-    assert rate_limit.select_storage() == "memory://"
+    uri, options = rate_limit.select_storage()
+    assert uri == "memory://"
+    assert options == {}
 
     limiter = Limiter(key_func=lambda: "test", storage_uri="memory://")
     assert isinstance(limiter._limiter.storage, MemoryStorage)
@@ -119,7 +122,8 @@ def test_memory_storage_when_redis_url_unset(monkeypatch):
     from app.core import rate_limit
 
     monkeypatch.setattr(rate_limit.settings, "REDIS_URL", None)
-    assert rate_limit.select_storage() == "memory://"
+    uri, _ = rate_limit.select_storage()
+    assert uri == "memory://"
 
 
 def test_redis_reachable_returns_false_on_connection_refused():
@@ -129,8 +133,13 @@ def test_redis_reachable_returns_false_on_connection_refused():
     assert redis_reachable("redis://127.0.0.1:1/0", timeout=0.5) is False
 
 
-def test_app_limiter_uses_memory_storage_in_dev():
-    from limits.storage import MemoryStorage
+def test_app_limiter_storage_matches_selected_storage():
+    # Environment-agnostic: the app limiter's storage must match what select_storage picks.
+    from limits.storage import MemoryStorage, RedisStorage
 
-    assert isinstance(limiter._limiter.storage, MemoryStorage)
+    from app.core import rate_limit
+
+    uri, _ = rate_limit.select_storage()
+    expected = RedisStorage if uri.startswith("redis://") else MemoryStorage
+    assert isinstance(limiter._limiter.storage, expected)
 
