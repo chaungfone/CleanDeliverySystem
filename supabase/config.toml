@@ -1,0 +1,14 @@
+project_id = "clean-delivery-system"
+
+[api]
+port = 54321
+schemas = ["public", "auth"]
+
+[db]
+port = 54322
+
+[auth]
+enabled = true
+
+[functions]
+notify-order-status = { verify_jwt = false }

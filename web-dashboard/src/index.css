@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Pyidaungsu';
+  src: url('/fonts/Pyidaungsu.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+1000-109F, U+A9E0-A9FF, U+AA60-AA7F;
+}
+
+@font-face {
+  font-family: 'Pyidaungsu';
+  src: url('/fonts/Pyidaungsu-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+1000-109F, U+A9E0-A9FF, U+AA60-AA7F;
+}
+
+:root {
+  --font-sans: 'Pyidaungsu', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+@layer base {
+  body {
+    @apply bg-neutral-99 text-neutral-10;
+  }
+}
+
+/* Myanmar text rendering helpers */
+[lang='my'] {
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  word-spacing: 0.05em;
+}

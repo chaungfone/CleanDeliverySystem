@@ -1,0 +1,30 @@
+# ---- Secrets & local config (NEVER committed) ----
+.env
+.env.*
+!.env.example
+
+# ---- Python backend ----
+**/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# ---- Logs & artifacts ----
+backend/logs/
+web-dashboard/logs/
+logs/
+.artifacts/
+.dbg/
+
+# ---- Node / frontend build (ignore in ALL subdirs, no re-inclusion) ----
+node_modules/
+web-dashboard/dist/
+
+# ---- Build caches & local outputs ----
+**/.gradle/
+app/build/
+.gradle/
+
+# ---- OS / editor ----
+Thumbs.db
+.DS_Store
