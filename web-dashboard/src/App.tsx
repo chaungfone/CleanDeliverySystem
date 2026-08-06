@@ -48,7 +48,7 @@ function DashboardLayout() {
   return (
     <div className="min-h-screen bg-neutral-99">
       <Sidebar mobileOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <main className="lg:pl-64 p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
+      <main aria-label="Main content" className="lg:pl-64 p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<DashboardOverview />} />
@@ -74,7 +74,7 @@ function App() {
           <Route
             path="/login"
             element={
-              <main className="min-h-screen">
+              <main aria-label="Main content" className="min-h-screen">
                 <Login />
               </main>
             }
