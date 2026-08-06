@@ -112,7 +112,7 @@ export default function Login() {
                 />
               </div>
               {debugOtp && (
-                <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
                     {t('login.debugOtp')} <b className="font-mono">{debugOtp}</b>

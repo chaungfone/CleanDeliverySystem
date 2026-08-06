@@ -29,3 +29,11 @@ body {
   letter-spacing: 0.01em;
   word-spacing: 0.05em;
 }
+
+/* Accessible input placeholders: default browser gray is too light on white
+   (≈3.2:1). gray-600 (#52606d) on white is ≈7.7:1, meeting WCAG AA/AAA. */
+input::placeholder,
+textarea::placeholder {
+  color: #52606d !important; /* gray-600 */
+  opacity: 1;
+}
