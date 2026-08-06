@@ -1,3 +1,4 @@
+import logging
 import re
 import secrets
 import time
@@ -10,8 +11,16 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.core.database import get_supabase_client
 from app.core.rate_limit import auth_rate_key, limiter
-from app.core.security import CurrentUser, _decode_token
+from app.core.security import (
+    CurrentUser,
+    _decode_token,
+    is_token_revoked,
+    revoke_all_user_tokens,
+    revoke_token,
+)
 from app.models.user import UserResponse, UserRole
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -99,6 +108,8 @@ def delete_my_account(user: CurrentUser):
     Implements GDPR 'Right to be Forgotten'.
     """
     db = get_supabase_client()
+    # GDPR force logout: revoke every session before removing the account.
+    revoke_all_user_tokens(str(user.id))
     # RLS/Triggers will handle cascaded deletion of orders, addresses, etc.
     # We delete from public.users first, then auth.users management would happen via Supabase Admin API
     db.table("users").delete().eq("id", str(user.id)).execute()
@@ -201,6 +212,10 @@ def refresh_cookie(request: Request, response: Response):
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid refresh token payload")
 
+    # Deny-list check: reject revoked (logout / force-logout) refresh tokens.
+    if is_token_revoked(payload.get("jti"), str(user_id)):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+
     tokens = _issue_tokens(str(user_id), payload.get("role") or UserRole.CUSTOMER.value)
     _set_refresh_cookie(response, tokens["refresh_token"])
     return {
@@ -211,6 +226,16 @@ def refresh_cookie(request: Request, response: Response):
 
 
 @router.post("/logout")
-def logout(response: Response):
+def logout(request: Request, response: Response):
+    """Revokes the current refresh token's jti, then clears the HttpOnly cookie."""
+    refresh = request.cookies.get(_REFRESH_COOKIE)
+    if refresh:
+        try:
+            payload = _decode_token(refresh)
+            revoke_token(payload.get("jti"), str(payload.get("sub", "")), payload.get("exp"))
+        except HTTPException as exc:
+            logger.debug("Logout: refresh token invalid/expired (%s); clearing cookie anyway", exc.detail)
+        except Exception:
+            logger.exception("Logout: token revocation failed; clearing cookie anyway")
     _clear_refresh_cookie(response)
     return {"message": "Logged out"}

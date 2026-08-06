@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable
+from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
@@ -209,3 +210,115 @@ def require_driver_or_admin(
 
 
 AssignedDriverOrder = Annotated[dict, Depends(require_driver_or_admin)]
+
+
+# ---- JWT jti deny-list / revocation -----------------------------------------
+_REVOKED_TABLE = "revoked_tokens"
+_USER_REVOKE_PREFIX = "user:"
+_REFRESH_LIFETIME_SECONDS = 30 * 24 * 3600
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def is_token_revoked(jti: str | None, user_id: str | None = None) -> bool:
+    """
+    True if `jti` (or any token of `user_id`) appears on the deny-list.
+
+    A per-user marker row `user:{user_id}` allows "revoke all sessions"
+    (password reset / GDPR force logout) without enumerating every jti.
+    """
+    candidates: list[str] = []
+    if jti:
+        candidates.append(jti)
+    if user_id:
+        candidates.append(f"{_USER_REVOKE_PREFIX}{user_id}")
+    if not candidates:
+        return False
+    try:
+        result = (
+            get_supabase_client()
+            .table(_REVOKED_TABLE)
+            .select("id")
+            .in_("jti", candidates)
+            .maybe_single()
+            .execute()
+        )
+        row = result.data if result else None
+    except APIError as exc:
+        logger.error("Error checking revoked token: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error while checking token revocation",
+        ) from exc
+    return bool(row)
+
+
+def revoke_token(jti: str | None, user_id: str, expires_at: int | None) -> None:
+    """Add a single token jti to the deny-list (idempotent)."""
+    if not jti:
+        return
+    expires = (
+        datetime.fromtimestamp(expires_at, tz=timezone.utc).isoformat()
+        if expires_at
+        else _now_iso()
+    )
+    try:
+        get_supabase_client().table(_REVOKED_TABLE).upsert(
+            {"jti": jti, "user_id": user_id, "expires_at": expires},
+            on_conflict="jti",
+        ).execute()
+    except APIError as exc:
+        logger.error("Error revoking token %s: %s", jti, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error while revoking token",
+        ) from exc
+
+
+def revoke_all_user_tokens(user_id: str) -> None:
+    """
+    Revoke every active session for `user_id` (password reset / GDPR force logout).
+
+    Inserts a `user:{user_id}` marker so any of the user's tokens are denied by
+    :func:`is_token_revoked` without knowing each jti. Idempotent (upsert on jti).
+    """
+    if not user_id:
+        return
+    expires_at = int(datetime.now(timezone.utc).timestamp()) + _REFRESH_LIFETIME_SECONDS
+    try:
+        get_supabase_client().table(_REVOKED_TABLE).upsert(
+            {
+                "jti": f"{_USER_REVOKE_PREFIX}{user_id}",
+                "user_id": user_id,
+                "expires_at": datetime.fromtimestamp(expires_at, tz=timezone.utc).isoformat(),
+            },
+            on_conflict="jti",
+        ).execute()
+    except APIError as exc:
+        logger.error("Error revoking all tokens for %s: %s", user_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error while revoking user tokens",
+        ) from exc
+
+
+def purge_expired_revoked_tokens() -> int:
+    """
+    Delete deny-list rows whose expires_at has passed.
+
+    Intended for a scheduled/periodic job; returns the number of rows removed.
+    """
+    try:
+        result = (
+            get_supabase_client()
+            .table(_REVOKED_TABLE)
+            .delete()
+            .lt("expires_at", _now_iso())
+            .execute()
+        )
+        return len(result.data) if result and result.data else 0
+    except APIError as exc:
+        logger.error("Error purging expired revoked tokens: %s", exc)
+        return 0
