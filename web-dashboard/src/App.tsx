@@ -71,7 +71,14 @@ function App() {
     <Router>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route
+            path="/login"
+            element={
+              <main className="min-h-screen">
+                <Login />
+              </main>
+            }
+          />
           <Route
             path="/*"
             element={
