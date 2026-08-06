@@ -25,6 +25,11 @@ supabase/.temp/
 node_modules/
 web-dashboard/dist/
 
+# ---- Lighthouse CI artifacts ----
+web-dashboard/.lighthouseci/
+web-dashboard/lhci_reports/
+web-dashboard/logs/
+
 # ---- Build caches & local outputs ----
 **/.gradle/
 app/build/
