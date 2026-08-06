@@ -17,6 +17,9 @@ logs/
 .artifacts/
 .dbg/
 
+# ---- Supabase CLI link state ----
+supabase/.temp/
+
 # ---- Node / frontend build (ignore in ALL subdirs, no re-inclusion) ----
 node_modules/
 web-dashboard/dist/
