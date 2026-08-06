@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from app.core.database import get_supabase_client
-from app.core.security import CurrentUser, require_roles, AssignedDriverOrder
+from app.core.security import AssignedDriverOrder, CurrentUser, require_roles
 from app.models.order import OrderResponse, OrderStatus
-from app.services.orders import load_orders_with_items
-from app.services.order_logic import validate_status_transition
 from app.services.notifications import trigger_order_notification
+from app.services.order_logic import validate_status_transition
+from app.services.orders import load_orders_with_items
 from app.services.routing import optimize_route
 
 router = APIRouter(dependencies=[Depends(require_roles("DRIVER"))])
@@ -35,7 +35,7 @@ async def update_order_status(order: AssignedDriverOrder, body: StatusUpdate):
     # Use the State Machine Service
     validate_status_transition(current_status, body.status, "DRIVER")
 
-    updated = db.table("orders").update({"status": body.status.value}).eq("id", order_id).execute()
+    db.table("orders").update({"status": body.status.value}).eq("id", order_id).execute()
 
     # Trigger Real-time Notification
     await trigger_order_notification(

@@ -1,7 +1,6 @@
-from typing import Dict
 
 # Simple translation dictionary
-TRANSLATIONS: Dict[str, Dict[str, str]] = {
+TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {
         "order_confirmed": "Your order has been confirmed.",
         "low_stock": "Insufficient stock for product.",

@@ -1,5 +1,7 @@
 import logging
+
 import httpx
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -22,7 +24,7 @@ async def send_system_alert(message: str, severity: str = "INFO"):
         try:
             async with httpx.AsyncClient() as client:
                 await client.post(webhook_url, json=alert_payload)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - external alert is best-effort; never crash caller
             logger.error("Failed to send external alert: %s", str(e))
 
     return True

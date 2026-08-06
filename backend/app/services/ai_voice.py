@@ -1,10 +1,10 @@
 import logging
 import re
-from typing import Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-async def parse_voice_intent(text: str) -> Dict[str, Any]:
+async def parse_voice_intent(text: str) -> dict[str, Any]:
     """
     Parses natural language text (Myanmar/English) into an order intent.
     Example Input: "ရေအေး ၂ ဗူး မနက်ဖြန် မနက် ပို့ပေးပါ"

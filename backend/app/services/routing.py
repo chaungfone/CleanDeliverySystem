@@ -1,6 +1,6 @@
 import logging
-from typing import List, Dict, Any
 import math
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ def calculate_distance(lat1, lon1, lat2, lng2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-def optimize_route(start_lat: float, start_lng: float, destinations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def optimize_route(start_lat: float, start_lng: float, destinations: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Solves a variation of the TSP using the Nearest Neighbor algorithm.
     start_lat/lng: Driver's current position.

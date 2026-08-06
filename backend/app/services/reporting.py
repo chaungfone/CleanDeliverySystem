@@ -1,9 +1,9 @@
 import csv
 import io
-from typing import List, Dict, Any
-from datetime import datetime
+from typing import Any
 
-def generate_sales_csv(orders: List[Dict[str, Any]]) -> str:
+
+def generate_sales_csv(orders: list[dict[str, Any]]) -> str:
     """Generates a CSV string for sales reporting."""
     output = io.StringIO()
     writer = csv.writer(output)
@@ -23,7 +23,7 @@ def generate_sales_csv(orders: List[Dict[str, Any]]) -> str:
 
     return output.getvalue()
 
-def generate_driver_performance_csv(drivers_data: List[Dict[str, Any]]) -> str:
+def generate_driver_performance_csv(drivers_data: list[dict[str, Any]]) -> str:
     """Generates a CSV string for driver performance metrics."""
     output = io.StringIO()
     writer = csv.writer(output)

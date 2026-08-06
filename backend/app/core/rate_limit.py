@@ -28,7 +28,7 @@ def auth_rate_key(request: Request) -> str:
             if isinstance(phone, str) and phone:
                 digits = "".join(ch for ch in phone if ch.isdigit())
                 return f"{ip}:{digits}"
-    except Exception as exc:  # body not JSON / not yet parsed
+    except Exception as exc:  # noqa: BLE001 - body not JSON / not yet parsed; fall back to IP key
         logger.debug("auth_rate_key: could not read phone from body: %s", exc)
     return ip
 

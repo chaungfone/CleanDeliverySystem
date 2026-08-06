@@ -1,6 +1,7 @@
 import logging
-from uuid import UUID
+
 from supabase import Client
+
 from app.models.order import OrderStatus
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,6 @@ def assign_driver_to_order(db: Client, order_id: str) -> str | None:
         logger.info("Automatically assigned driver %s to order %s", best_driver_id, order_id)
         return best_driver_id
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - dispatch is best-effort; caller falls back to manual assign
         logger.error("Error during automated driver assignment: %s", str(e))
         return None

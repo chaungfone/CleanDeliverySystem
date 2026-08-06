@@ -1,17 +1,15 @@
-from datetime import date, datetime, timedelta
-from decimal import Decimal
 import re
 import secrets
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+from enum import Enum
 from typing import Any
 from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from fastapi.responses import StreamingResponse
-from app.services.reporting import generate_sales_csv, generate_driver_performance_csv
-from pydantic import BaseModel, Field
 from postgrest.exceptions import APIError
-from enum import Enum
+from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.core.database import get_supabase_client
@@ -19,8 +17,9 @@ from app.core.security import require_admin
 from app.models.order import OrderResponse, OrderStatus
 from app.models.product import ProductCreate, ProductResponse, ProductUpdate
 from app.models.user import UserRole
-from app.services.orders import load_orders_with_items
 from app.services.dispatch import assign_driver_to_order
+from app.services.orders import load_orders_with_items
+from app.services.reporting import generate_sales_csv
 
 router = APIRouter(dependencies=[Depends(require_admin)])
 
@@ -60,7 +59,7 @@ def _admin_request(method: str, path: str, json: dict | None = None) -> dict:
         try:
             body = resp.json()
             msg = body.get("msg") or body.get("message") or body.get("error_description") or resp.text
-        except Exception:
+        except Exception:  # noqa: BLE001 - non-JSON upstream error body; fall back to raw text
             msg = resp.text
         raise HTTPException(status_code=400, detail=msg)
     return resp.json()
@@ -291,14 +290,14 @@ def dashboard_analytics(period: AnalyticsPeriod = AnalyticsPeriod.DAILY):
     Periods: daily, weekly, monthly
     """
     db = get_supabase_client()
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     if period == "weekly":
         start_date = (now - timedelta(days=7)).isoformat()
     elif period == "monthly":
         start_date = (now - timedelta(days=30)).isoformat()
     else:  # daily
-        start_date = date.today().isoformat()
+        start_date = now.date().isoformat()
 
     orders_data = db.table("orders") \
         .select("status, total_amount, created_at") \
@@ -333,7 +332,7 @@ def export_sales_report(start_date: date | None = None):
     return Response(
         content=csv_content,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=sales_report_{date.today()}.csv"}
+        headers={"Content-Disposition": f"attachment; filename=sales_report_{datetime.now(timezone.utc).date()}.csv"}
     )
 
 @router.get("/reviews")
@@ -359,7 +358,7 @@ def handle_assignment(order_id: UUID, body: AssignDriver):
         if not driver or driver["role"] != "DRIVER":
             raise HTTPException(status_code=400, detail="Valid Driver not found")
 
-        updated = db.table("orders").update({
+        db.table("orders").update({
             "driver_id": body.driver_id,
             "status": OrderStatus.ASSIGNED.value
         }).eq("id", order_id).execute()
@@ -368,9 +367,6 @@ def handle_assignment(order_id: UUID, body: AssignDriver):
         best_driver = assign_driver_to_order(db, order_id)
         if not best_driver:
             raise HTTPException(status_code=404, detail="No available drivers for automated assignment")
-
-        updated_resp = db.table("orders").select("*").eq("id", order_id).execute()
-        updated = updated_resp
 
     return load_orders_with_items(db, order_ids=[order_id])[0]
 
@@ -424,7 +420,6 @@ def delete_product(product_id: UUID):
     if not existing:
         raise HTTPException(status_code=404, detail="Product not found")
     db.table("products").delete().eq("id", product_id).execute()
-    return None
 
 
 @router.post("/branches", status_code=201)
@@ -481,7 +476,6 @@ def delete_branch(branch_id: UUID):
             status_code=400,
             detail="Cannot delete branch with linked orders/staff. Reassign or deactivate it first.",
         ) from exc
-    return None
 
 
 @router.get("/staff")
@@ -581,7 +575,6 @@ def delete_staff(user_id: UUID):
             status_code=400,
             detail="Cannot delete this user: they have linked records (e.g. orders).",
         ) from exc
-    return None
 
 
 @router.patch("/inventory/{branch_id}")

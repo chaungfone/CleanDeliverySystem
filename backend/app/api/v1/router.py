@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import admin, auth, customer, driver, webhooks, iot, franchise
+from app.api.v1.endpoints import admin, auth, customer, driver, franchise, iot, webhooks
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])

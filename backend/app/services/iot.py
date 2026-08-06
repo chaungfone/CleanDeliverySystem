@@ -1,6 +1,7 @@
 import logging
+
 from supabase import Client
-from app.models.order import OrderCreate, OrderItemCreate
+
 # Note: Since endpoints/customer.py has place_order, we'd normally call that service
 # but since it's in a router, we'll implement a standalone service function if needed.
 

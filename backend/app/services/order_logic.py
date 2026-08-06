@@ -1,14 +1,14 @@
 import logging
-from typing import Dict, Set
 
 from fastapi import HTTPException
+
 from app.models.order import OrderStatus
 
 logger = logging.getLogger(__name__)
 
 # Define allowed transitions for the Order State Machine
 # Format: { CURRENT_STATUS: {ALLOWED_NEXT_STATUSES} }
-STATUS_TRANSITIONS: Dict[OrderStatus, Set[OrderStatus]] = {
+STATUS_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
     OrderStatus.PENDING: {OrderStatus.CONFIRMED, OrderStatus.CANCELLED},
     OrderStatus.CONFIRMED: {OrderStatus.ASSIGNED, OrderStatus.CANCELLED},
     OrderStatus.ASSIGNED: {OrderStatus.IN_TRANSIT, OrderStatus.CANCELLED},
@@ -18,7 +18,7 @@ STATUS_TRANSITIONS: Dict[OrderStatus, Set[OrderStatus]] = {
 }
 
 # Role-based restrictions for transitions
-ROLE_PERMISSIONS: Dict[str, Set[OrderStatus]] = {
+ROLE_PERMISSIONS: dict[str, set[OrderStatus]] = {
     "ADMIN": {
         OrderStatus.CONFIRMED,
         OrderStatus.ASSIGNED,
@@ -54,11 +54,14 @@ def validate_status_transition(current_status: OrderStatus, new_status: OrderSta
         )
 
     # 3. Specific business rule: Customers can only cancel orders that are PENDING or CONFIRMED
-    if user_role == "CUSTOMER" and new_status == OrderStatus.CANCELLED:
-        if current_status not in (OrderStatus.PENDING, OrderStatus.CONFIRMED):
-            raise HTTPException(
-                status_code=400,
-                detail="Orders can only be cancelled before they are assigned to a driver."
-            )
+    if (
+        user_role == "CUSTOMER"
+        and new_status == OrderStatus.CANCELLED
+        and current_status not in (OrderStatus.PENDING, OrderStatus.CONFIRMED)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Orders can only be cancelled before they are assigned to a driver."
+        )
 
     return True

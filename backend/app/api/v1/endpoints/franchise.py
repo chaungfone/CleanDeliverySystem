@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+
 from app.core.database import get_supabase_client
-from app.core.security import require_roles, CurrentUser
+from app.core.security import CurrentUser, require_roles
 from app.models.user import UserRole
 
 router = APIRouter(dependencies=[Depends(require_roles(UserRole.ADMIN, UserRole.BRANCH_MANAGER))])
@@ -14,7 +15,6 @@ class FranchiseCreate(BaseModel):
 @router.get("/stats")
 def get_franchise_stats(user: CurrentUser):
     """Returns commission and sales stats for the dealer's franchise."""
-    db = get_supabase_client()
     # In production, filter by user.branch_id or franchise link
     return {
         "business_name": "Apex Water Dealers",

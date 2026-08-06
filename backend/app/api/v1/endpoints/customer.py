@@ -1,5 +1,4 @@
 from decimal import Decimal
-from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
 
@@ -7,14 +6,15 @@ from app.core.database import get_supabase_client
 from app.core.security import CurrentUser, OwnerOrAdminOrder
 from app.models.order import OrderCreate, OrderResponse
 from app.models.product import ProductResponse
-from app.services.orders import load_orders_with_items
-from app.services.caching import catalog_cache
 from app.services.ai_voice import parse_voice_intent, transcribe_audio
+from app.services.caching import catalog_cache
+from app.services.orders import load_orders_with_items
 
 router = APIRouter()
 
 
 from pydantic import BaseModel, Field
+
 
 class OrderReview(BaseModel):
     rating: int = Field(..., ge=1, le=5)
@@ -64,7 +64,7 @@ def place_order(payload: OrderCreate, user: CurrentUser):
     if len(product_map) != len(set(product_ids)):
         raise HTTPException(status_code=400, detail="One or more products do not exist")
 
-    total = Decimal("0")
+    total = Decimal(0)
     line_rows: list[dict] = []
     for item in payload.items:
         product = product_map[str(item.product_id)]

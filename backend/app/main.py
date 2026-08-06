@@ -1,9 +1,10 @@
 import logging
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import sentry_sdk
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -63,7 +64,8 @@ async def add_security_headers(request: Request, call_next: Callable):
     csp = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+        "font-src 'self' data: https://fonts.gstatic.com; "
         "img-src 'self' data: https://fastapi.tiangolo.com; "
     )
     response.headers["Content-Security-Policy"] = csp
@@ -126,7 +128,7 @@ async def health_check() -> dict:
         # Simple query to check connectivity
         db.table("users").select("id", count="exact").limit(1).execute()
         health["services"]["supabase"] = "connected"
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - health endpoint must never 500; degrade instead
         logger.error("Healthcheck: Supabase unreachable: %s", str(e))
         health["services"]["supabase"] = "unreachable"
         health["status"] = "degraded"

@@ -1,5 +1,5 @@
 import logging
-from uuid import UUID
+
 from supabase import Client
 
 logger = logging.getLogger(__name__)
@@ -9,7 +9,7 @@ def award_points(db: Client, user_id: str, points: int):
     try:
         db.rpc("award_loyalty_points", {"p_user_id": user_id, "p_points": points}).execute()
         logger.info("Awarded %d points to user %s", points, user_id)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - loyalty points are best-effort; never crash the checkout flow
         logger.error("Failed to award points: %s", str(e))
 
 def validate_promo_code(db: Client, code: str, user_id: str) -> dict | None:

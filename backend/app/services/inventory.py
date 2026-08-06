@@ -1,5 +1,5 @@
 import logging
-from uuid import UUID
+
 from supabase import Client
 
 logger = logging.getLogger(__name__)
@@ -21,5 +21,5 @@ def update_inventory_stock(db: Client, branch_id: str, item_type: str, quantity_
             db.table("inventory").update({item_type: new_val}).eq("branch_id", branch_id).execute()
 
         logger.info("Updated %s for branch %s by %f", item_type, branch_id, quantity_delta)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - fail-soft background stock adjustment; never crash caller
         logger.error("Failed to update inventory: %s", str(e))

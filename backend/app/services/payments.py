@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+
 from supabase import Client
 
 logger = logging.getLogger(__name__)

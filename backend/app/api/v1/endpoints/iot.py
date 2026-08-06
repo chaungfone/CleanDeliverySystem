@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
+
 from app.core.database import get_supabase_client
 from app.services.iot import process_iot_ping
 

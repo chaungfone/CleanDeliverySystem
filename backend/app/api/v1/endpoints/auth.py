@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.core.database import get_supabase_client
-from app.core.rate_limit import limiter, auth_rate_key
+from app.core.rate_limit import auth_rate_key, limiter
 from app.core.security import CurrentUser, _decode_token
 from app.models.user import UserResponse, UserRole
 
@@ -102,7 +102,6 @@ def delete_my_account(user: CurrentUser):
     # RLS/Triggers will handle cascaded deletion of orders, addresses, etc.
     # We delete from public.users first, then auth.users management would happen via Supabase Admin API
     db.table("users").delete().eq("id", str(user.id)).execute()
-    return None
 
 
 @router.post("/request-otp")

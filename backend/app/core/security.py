@@ -1,5 +1,6 @@
 import logging
-from typing import Annotated, Callable
+from collections.abc import Callable
+from typing import Annotated
 from uuid import UUID
 
 import jwt
@@ -44,7 +45,7 @@ def _decode_token(token: str) -> dict:
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),  # noqa: B008 - FastAPI idiom
 ) -> UserResponse:
     if credentials is None:
         raise HTTPException(
@@ -89,7 +90,7 @@ CurrentUser = Annotated[UserResponse, Depends(get_current_user)]
 def require_roles(*roles: UserRole) -> Callable[[UserResponse], UserResponse]:
     allowed = set(roles)
 
-    def checker(user: UserResponse = Depends(get_current_user)) -> UserResponse:
+    def checker(user: UserResponse = Depends(get_current_user)) -> UserResponse:  # noqa: B008 - FastAPI idiom
         if user.role not in allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
@@ -144,11 +145,13 @@ def require_owner_or_admin(
             status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
         )
 
-    if user.role not in (UserRole.ADMIN, UserRole.BRANCH_MANAGER):
-        if str(order["customer_id"]) != str(user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Not your order"
-            )
+    if (
+        user.role not in (UserRole.ADMIN, UserRole.BRANCH_MANAGER)
+        and str(order["customer_id"]) != str(user.id)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not your order"
+        )
 
     return order
 
@@ -193,12 +196,14 @@ def require_driver_or_admin(
             detail="Order not found or not assigned",
         )
 
-    if user.role not in (UserRole.ADMIN, UserRole.BRANCH_MANAGER):
-        if str(order["driver_id"]) != str(user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not your assigned order",
-            )
+    if (
+        user.role not in (UserRole.ADMIN, UserRole.BRANCH_MANAGER)
+        and str(order["driver_id"]) != str(user.id)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not your assigned order",
+        )
 
     return order
 
