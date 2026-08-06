@@ -54,7 +54,7 @@ export function ErrorState({ error, fallback = '', message }: ErrorStateProps) {
   const Icon = resolved.icon;
   return (
     <div className="flex items-center justify-center py-20 px-4">
-      <div className="flex items-start gap-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 max-w-lg">
+      <div className="flex items-start gap-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3 max-w-lg">
         <Icon className="w-5 h-5 shrink-0 mt-0.5" />
         <div>
           <p className="font-medium">{resolved.message}</p>

@@ -90,7 +90,7 @@ export default function Settings() {
                 <ShieldCheck className="w-4 h-4 text-green-600" />
                 {t('settings.health')}
               </span>
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md">200 OK</span>
+              <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 rounded-md">200 OK</span>
             </div>
           </div>
         </div>

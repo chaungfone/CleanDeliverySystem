@@ -198,14 +198,14 @@ export default function OrderManagement() {
 
 function StatusBadge({ status }: { status: string }) {
   const configs: any = {
-    PENDING: { color: 'text-orange-600 bg-orange-50', icon: Clock },
-    CONFIRMED: { color: 'text-yellow-600 bg-yellow-50', icon: Clock },
-    ASSIGNED: { color: 'text-blue-600 bg-blue-50', icon: Truck },
-    IN_TRANSIT: { color: 'text-primary bg-accent', icon: Truck },
-    DELIVERED: { color: 'text-green-600 bg-green-50', icon: CheckCircle2 },
-    CANCELLED: { color: 'text-red-600 bg-red-50', icon: CheckCircle2 },
+    PENDING: { color: 'text-orange-700 bg-orange-50', icon: Clock },
+    CONFIRMED: { color: 'text-yellow-700 bg-yellow-50', icon: Clock },
+    ASSIGNED: { color: 'text-blue-700 bg-blue-50', icon: Truck },
+    IN_TRANSIT: { color: 'text-blue-700 bg-accent', icon: Truck },
+    DELIVERED: { color: 'text-green-700 bg-green-50', icon: CheckCircle2 },
+    CANCELLED: { color: 'text-red-700 bg-red-50', icon: CheckCircle2 },
   };
-  const config = configs[status] ?? { color: 'text-neutral-600 bg-neutral-90', icon: Clock };
+  const config = configs[status] ?? { color: 'text-neutral-700 bg-neutral-90', icon: Clock };
   const Icon = config.icon;
 
   return (

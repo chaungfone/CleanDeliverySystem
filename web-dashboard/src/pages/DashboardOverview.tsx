@@ -133,7 +133,7 @@ function StatCard({ title, value, icon: Icon, trend, subValue }: any) {
           <Icon className="w-6 h-6 text-primary" />
         </div>
         {trend && (
-          <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+          <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 rounded-full">
             {trend}
           </span>
         )}

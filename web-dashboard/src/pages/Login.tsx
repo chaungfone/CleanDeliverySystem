@@ -146,7 +146,7 @@ export default function Login() {
 
 function ErrorMessage({ message }: { message: string }) {
   return (
-    <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+    <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
       <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
       <span>{message}</span>
     </div>

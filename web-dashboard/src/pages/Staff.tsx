@@ -294,12 +294,12 @@ export default function Staff() {
 
 function RoleBadge({ role }: { role: string }) {
   const configs: any = {
-    ADMIN: 'bg-red-50 text-red-600',
-    DRIVER: 'bg-blue-50 text-blue-600',
-    BRANCH_MANAGER: 'bg-teal-50 text-teal-600',
+    ADMIN: 'bg-red-50 text-red-700',
+    DRIVER: 'bg-blue-50 text-blue-700',
+    BRANCH_MANAGER: 'bg-teal-50 text-teal-700',
   };
   return (
-    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${configs[role] ?? 'bg-neutral-90 text-neutral-500'}`}>
+    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${configs[role] ?? 'bg-neutral-90 text-neutral-700'}`}>
       {role.replace(/_/g, ' ')}
     </span>
   );

@@ -188,7 +188,7 @@ export default function BranchManagement() {
               <div className="flex items-center gap-2">
                 <span
                   className={`text-xs font-bold px-2 py-1 rounded-md ${
-                    branch.is_active ? 'text-green-600 bg-green-50' : 'text-neutral-500 bg-neutral-90'
+                    branch.is_active ? 'text-green-700 bg-green-50' : 'text-neutral-700 bg-neutral-90'
                   }`}
                 >
                   {branch.is_active ? t('common.active') : t('common.inactive')}
