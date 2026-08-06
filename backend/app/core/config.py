@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str | None = None
     TWILIO_AUTH_TOKEN: str | None = None
 
+    # Redis (optional) - persistent rate-limiting / caching backend. When empty
+    # or unreachable, the rate limiter falls back to in-memory storage.
+    REDIS_URL: str | None = None
+
     @staticmethod
     def _is_placeholder(value: str) -> bool:
         lowered = value.lower()

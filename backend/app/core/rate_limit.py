@@ -1,6 +1,7 @@
 import json
 import logging
 
+import redis
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.requests import Request
@@ -8,6 +9,8 @@ from starlette.requests import Request
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+_REDIS_PING_TIMEOUT = 1.0
 
 
 def auth_rate_key(request: Request) -> str:
@@ -33,7 +36,49 @@ def auth_rate_key(request: Request) -> str:
     return ip
 
 
-limiter = Limiter(key_func=get_remote_address)
+def redis_reachable(uri: str, timeout: float = _REDIS_PING_TIMEOUT) -> bool:
+    """Best-effort liveness probe for the configured Redis URL.
+
+    Never raises: a failed probe just means "fall back to in-memory".
+    """
+    try:
+        client = redis.from_url(
+            uri,
+            socket_connect_timeout=timeout,
+            socket_timeout=timeout,
+            decode_responses=True,
+        )
+        return bool(client.ping())
+    except Exception as exc:  # noqa: BLE001 - probe must never crash startup
+        logger.debug("Redis reachability probe failed for %s: %s", uri, exc)
+        return False
+
+
+def select_storage() -> str:
+    """Choose the rate-limiter storage URI.
+
+    - settings.REDIS_URL set AND reachable  -> use Redis (persistent, multi-instance)
+    - settings.REDIS_URL set but unreachable -> in-memory fallback + startup WARNING
+    - settings.REDIS_URL unset              -> in-memory (offline dev), INFO log
+    """
+    redis_url = (settings.REDIS_URL or "").strip()
+    if redis_url and redis_reachable(redis_url):
+        logger.info("Rate limiter using Redis storage: %s", redis_url)
+        return redis_url
+    if redis_url:
+        logger.warning(
+            "REDIS_URL=%s configured but unreachable; falling back to in-memory rate limiting.",
+            redis_url,
+        )
+    else:
+        logger.info("REDIS_URL not configured; rate limiter using in-memory storage.")
+    return "memory://"
+
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri=select_storage(),
+)
 
 # Strict enforcement in production; allow dev/tests to run unthrottled.
 limiter.enabled = not settings.DEBUG

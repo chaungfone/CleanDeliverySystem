@@ -42,9 +42,9 @@ def test_verify_otp_limited_to_10_per_phone_when_enabled():
 
 
 def test_rate_limit_key_includes_phone():
-    from app.core.rate_limit import auth_rate_key
-
     from starlette.requests import Request
+
+    from app.core.rate_limit import auth_rate_key
 
     scope = {
         "type": "http",
@@ -68,9 +68,9 @@ def test_rate_limit_key_includes_phone():
 
 
 def test_auth_rate_key_falls_back_to_ip_without_body():
-    from app.core.rate_limit import auth_rate_key
-
     from starlette.requests import Request
+
+    from app.core.rate_limit import auth_rate_key
 
     scope = {
         "type": "http",
@@ -84,3 +84,53 @@ def test_auth_rate_key_falls_back_to_ip_without_body():
     }
     request = Request(scope, lambda: None)  # body never read
     assert auth_rate_key(request) == "9.9.9.9"
+
+
+def test_redis_storage_selected_when_reachable(monkeypatch):
+    from limits.storage import RedisStorage
+    from slowapi import Limiter
+
+    from app.core import rate_limit
+
+    monkeypatch.setattr(rate_limit.settings, "REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setattr(rate_limit, "redis_reachable", lambda uri, timeout=1.0: True)
+    uri = rate_limit.select_storage()
+    assert uri == "redis://localhost:6379/0"
+
+    limiter = Limiter(key_func=lambda: "test", storage_uri=uri)
+    assert isinstance(limiter._limiter.storage, RedisStorage)
+
+
+def test_memory_storage_fallback_when_redis_unreachable(monkeypatch):
+    from limits.storage import MemoryStorage
+    from slowapi import Limiter
+
+    from app.core import rate_limit
+
+    monkeypatch.setattr(rate_limit.settings, "REDIS_URL", "redis://localhost:6399/0")
+    monkeypatch.setattr(rate_limit, "redis_reachable", lambda uri, timeout=1.0: False)
+    assert rate_limit.select_storage() == "memory://"
+
+    limiter = Limiter(key_func=lambda: "test", storage_uri="memory://")
+    assert isinstance(limiter._limiter.storage, MemoryStorage)
+
+
+def test_memory_storage_when_redis_url_unset(monkeypatch):
+    from app.core import rate_limit
+
+    monkeypatch.setattr(rate_limit.settings, "REDIS_URL", None)
+    assert rate_limit.select_storage() == "memory://"
+
+
+def test_redis_reachable_returns_false_on_connection_refused():
+    # Port 1 on loopback is not listening -> connection refused (fast), no raise.
+    from app.core.rate_limit import redis_reachable
+
+    assert redis_reachable("redis://127.0.0.1:1/0", timeout=0.5) is False
+
+
+def test_app_limiter_uses_memory_storage_in_dev():
+    from limits.storage import MemoryStorage
+
+    assert isinstance(limiter._limiter.storage, MemoryStorage)
+
