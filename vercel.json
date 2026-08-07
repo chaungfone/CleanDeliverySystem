@@ -3,11 +3,6 @@
   "installCommand": "cd web-dashboard && npm install",
   "buildCommand": "cd web-dashboard && npm run build",
   "outputDirectory": "web-dashboard/dist",
-  "functions": {
-    "api/**/*.py": {
-      "runtime": "python3.12"
-    }
-  },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.py" },
     { "handle": "filesystem" },
