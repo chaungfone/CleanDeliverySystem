@@ -6,6 +6,12 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+# Ensure backend package imports work in serverless environments (e.g. Vercel)
+# where the working directory may be backend/app/ rather than backend/.
+_backend_dir = Path(__file__).resolve().parent.parent
+if str(_backend_dir) not in sys.path:
+    sys.path.insert(0, str(_backend_dir))
+
 import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -19,12 +25,6 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import get_supabase_client
 from app.core.rate_limit import limiter
-
-# Ensure backend package imports work in serverless environments (e.g. Vercel)
-# where the working directory may be backend/app/ rather than backend/.
-_backend_dir = Path(__file__).resolve().parent.parent
-if str(_backend_dir) not in sys.path:
-    sys.path.insert(0, str(_backend_dir))
 
 # Logging Configuration
 logging.basicConfig(

@@ -17,6 +17,7 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/backend/app/main.py" },
-    { "src": "/(.*)", "dest": "/web-dashboard/dist/$1" }
+    { "src": "/(.*)", "dest": "/web-dashboard/dist/$1" },
+    { "src": "/(.*)", "dest": "/web-dashboard/dist/index.html" }
   ]
 }
