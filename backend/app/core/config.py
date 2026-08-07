@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     # or unreachable, the rate limiter falls back to in-memory storage.
     REDIS_URL: str | None = None
 
+    # Database connection strings
+    # DATABASE_URL: pooled connection (pgBouncer) used by application runtime.
+    # DIRECT_URL: direct database URL (port 5432) suitable for migrations or admin tasks.
+    DATABASE_URL: str | None = None
+    DIRECT_URL: str | None = None
+    PGBOUNCER_TRANSACTION_POOLING: bool = False
+
     @staticmethod
     def _is_placeholder(value: str) -> bool:
         lowered = value.lower()
@@ -91,3 +98,4 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+

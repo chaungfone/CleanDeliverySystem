@@ -60,15 +60,26 @@ async def add_security_headers(request: Request, call_next: Callable):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
-    # Adjusted CSP to allow Swagger UI assets
+    # Generate a per-request CSP nonce to avoid using 'unsafe-inline'.
+    # The nonce is returned in the CSP header and also exposed via X-CSP-Nonce so
+    # any server-rendered templates or instrumented UIs (Swagger) can inject it
+    # into their inline <script nonce="..."> and <style nonce="..."> tags.
+    import secrets
+
+    nonce = secrets.token_urlsafe(16)
+
+    # Tightened CSP: no 'unsafe-inline'. Use nonce for inline scripts/styles and
+    # continue to allow trusted CDNs used by the docs UI.
     csp = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+        f"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
+        f"style-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
         "font-src 'self' data: https://fonts.gstatic.com; "
         "img-src 'self' data: https://fastapi.tiangolo.com; "
     )
     response.headers["Content-Security-Policy"] = csp
+    # Expose the nonce for use by instrumented front-ends (e.g., test harnesses or templates)
+    response.headers["X-CSP-Nonce"] = nonce
     return response
 
 # Custom Request Logging Middleware

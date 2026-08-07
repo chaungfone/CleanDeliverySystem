@@ -1,7 +1,8 @@
 package com.example.cleandelivery.di
 
 import com.example.cleandelivery.data.remote.ApiService
-import com.example.cleandelivery.data.remote.AuthInterceptor
+import com.example.cleandelivery.data.remote.BearerAuthInterceptor
+import com.example.cleandelivery.data.remote.TokenAuthenticator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,13 +33,15 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        authInterceptor: AuthInterceptor,
+        bearerAuthInterceptor: BearerAuthInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
         loggingInterceptor: HttpLoggingInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .connectTimeout(TIMEOUT, TimeUnit.SECONDS)
             .readTimeout(TIMEOUT, TimeUnit.SECONDS)
-            .addInterceptor(authInterceptor)
+            .addInterceptor(bearerAuthInterceptor)
+            .authenticator(tokenAuthenticator)
             .addInterceptor(loggingInterceptor)
             .build()
     }

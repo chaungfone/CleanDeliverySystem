@@ -86,3 +86,58 @@ def test_expired_refresh_cookie_returns_401():
     c.cookies.set(_REFRESH_COOKIE, expired)
     resp = c.post("/api/v1/auth/refresh-cookie")
     assert resp.status_code == 401
+
+
+def test_mobile_json_refresh_returns_rotated_tokens():
+    c, _ = _login_as()
+    old_refresh = c.cookies.get(_REFRESH_COOKIE)
+    assert old_refresh is not None
+
+    # Mobile client posts JSON refresh token
+    resp = c.post(
+        "/api/v1/auth/refresh",
+        headers={"X-Client-Type": "mobile"},
+        json={"refresh_token": old_refresh},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["refresh_token"] != old_refresh
+
+    # Mobile response should not set an HttpOnly cookie for the refresh token
+    # (server returns rotated refresh token in JSON instead).
+    set_cookie_hdr = resp.headers.get("set-cookie", "")
+    assert _REFRESH_COOKIE not in set_cookie_hdr
+
+
+def test_reuse_of_revoked_refresh_token_fails_and_new_token_works():
+    c, _ = _login_as()
+    old = c.cookies.get(_REFRESH_COOKIE)
+    assert old is not None
+
+    # First refresh rotates and revokes the old token
+    resp = c.post(
+        "/api/v1/auth/refresh",
+        headers={"X-Client-Type": "mobile"},
+        json={"refresh_token": old},
+    )
+    assert resp.status_code == 200
+    new = resp.json().get("refresh_token")
+    assert new is not None
+
+    # Reusing old refresh token must be rejected
+    resp2 = c.post(
+        "/api/v1/auth/refresh",
+        headers={"X-Client-Type": "mobile"},
+        json={"refresh_token": old},
+    )
+    assert resp2.status_code == 401
+
+    # New refresh token should work
+    resp3 = c.post(
+        "/api/v1/auth/refresh",
+        headers={"X-Client-Type": "mobile"},
+        json={"refresh_token": new},
+    )
+    assert resp3.status_code == 200

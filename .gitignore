@@ -38,3 +38,6 @@ app/build/
 # ---- OS / editor ----
 Thumbs.db
 .DS_Store
+
+# ---- Java / JVM heap dumps ----
+*.hprof

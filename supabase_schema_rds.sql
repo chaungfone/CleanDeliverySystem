@@ -480,3 +480,18 @@ AS $$
     )
     ORDER BY distance_m;
 $$;
+
+-- ----------------------------------------------------------------------------
+-- audit_logs: immutable change history (who, when, what, old_value, new_value)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id           BIGSERIAL PRIMARY KEY,
+    who          TEXT,
+    action_time  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    what         TEXT NOT NULL,
+    old_value    JSONB,
+    new_value    JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action_time ON public.audit_logs (action_time DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_who ON public.audit_logs (who);

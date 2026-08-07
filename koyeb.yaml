@@ -1,0 +1,49 @@
+name: clean-delivery-backend
+type: docker
+
+build:
+  context: ./backend
+  dockerfile: ./backend/Dockerfile
+
+ports:
+  - port: 8000
+    http: {}
+
+env:
+  - name: DATABASE_URL
+    value: ${DATABASE_URL}
+  - name: SUPABASE_URL
+    value: ${SUPABASE_URL}
+  - name: SUPABASE_KEY
+    value: ${SUPABASE_KEY}
+  - name: SUPABASE_SERVICE_ROLE_KEY
+    value: ${SUPABASE_SERVICE_ROLE_KEY}
+  - name: SECRET_KEY
+    value: ${SECRET_KEY}
+  - name: ALGORITHM
+    value: ${ALGORITHM}
+  - name: ACCESS_TOKEN_EXPIRE_MINUTES
+    value: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+  - name: CORS_ORIGINS
+    value: ${CORS_ORIGINS}
+  - name: DEBUG
+    value: ${DEBUG}
+  - name: REDIS_URL
+    value: ${REDIS_URL}
+  - name: SENTRY_DSN
+    value: ${SENTRY_DSN}
+  - name: PROJECT_NAME
+    value: ${PROJECT_NAME}
+  - name: API_V1_PREFIX
+    value: ${API_V1_PREFIX}
+
+health_check:
+  port: 8000
+  path: /healthz
+  interval: 30s
+  timeout: 10s
+  grace_period: 10s
+
+scaling:
+  min_instances: 1
+  max_instances: 3

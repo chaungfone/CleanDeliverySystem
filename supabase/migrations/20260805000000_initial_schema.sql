@@ -6,10 +6,37 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- ENUMS
-CREATE TYPE user_role AS ENUM ('CUSTOMER', 'DRIVER', 'ADMIN');
-CREATE TYPE order_status AS ENUM ('PENDING', 'CONFIRMED', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED');
-CREATE TYPE payment_status AS ENUM ('PENDING', 'PAID', 'FAILED');
-CREATE TYPE payment_method AS ENUM ('COD', 'KPAY', 'WAVE_PAY', 'OTHER');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+    CREATE TYPE user_role AS ENUM ('CUSTOMER', 'DRIVER', 'ADMIN');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status') THEN
+    CREATE TYPE order_status AS ENUM ('PENDING', 'CONFIRMED', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status') THEN
+    CREATE TYPE payment_status AS ENUM ('PENDING', 'PAID', 'FAILED');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_method') THEN
+    CREATE TYPE payment_method AS ENUM ('COD', 'KPAY', 'WAVE_PAY', 'OTHER');
+  END IF;
+END
+$$;
 
 -- TABLES
 CREATE TABLE public.users (

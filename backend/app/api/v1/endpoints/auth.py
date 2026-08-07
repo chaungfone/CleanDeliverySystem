@@ -4,6 +4,7 @@ import secrets
 import time
 from typing import Any
 
+import json
 import jwt
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -24,8 +25,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+import redis
+
 _otp_store: dict[str, dict[str, Any]] = {}
 _OTP_TTL_SECONDS = 300
+
+# Redis client (lazy init) for cross-process OTP storage. Falls back to in-memory dict if Redis is unavailable.
+_redis_client: redis.Redis | None = None
 
 _REFRESH_COOKIE = "cd_refresh_token"
 _REFRESH_TTL_SECONDS = 30 * 24 * 3600  # 30 days
@@ -62,6 +68,60 @@ def _normalize_phone(phone: str) -> str:
     if not digits.startswith("0") and len(digits) >= 7:
         return "0" + digits
     return digits
+
+
+def _get_redis_client() -> redis.Redis | None:
+    """Lazily initialize and return a Redis client or None if unavailable."""
+    global _redis_client
+    if _redis_client:
+        return _redis_client
+    try:
+        url = settings.REDIS_URL
+        if not url:
+            return None
+        client = redis.from_url(url, decode_responses=True)
+        # quick health check
+        if client.ping():
+            _redis_client = client
+            return _redis_client
+        return None
+    except Exception:
+        # If Redis isn't available, fall back to in-memory store
+        return None
+
+
+def _otp_key(phone: str) -> str:
+    return f"otp:{phone}"
+
+
+def _set_otp(phone: str, otp: str, full_name: str | None) -> None:
+    """Store OTP in Redis with TTL if available, otherwise in-memory dict."""
+    client = _get_redis_client()
+    payload = {"otp": otp, "full_name": full_name, "expires_at": time.time() + _OTP_TTL_SECONDS}
+    if client:
+        try:
+            client.set(_otp_key(phone), json.dumps(payload), ex=_OTP_TTL_SECONDS)
+            return
+        except Exception:
+            pass
+    # Fallback in-memory
+    _otp_store[phone] = payload
+
+
+def _pop_otp(phone: str) -> dict[str, Any] | None:
+    """Retrieve and remove OTP entry. Returns None when missing."""
+    client = _get_redis_client()
+    if client:
+        try:
+            raw = client.get(_otp_key(phone))
+            if not raw:
+                return None
+            client.delete(_otp_key(phone))
+            return json.loads(raw)
+        except Exception:
+            pass
+    # Fallback in-memory
+    return _otp_store.pop(phone, None)
 
 
 class OtpRequest(BaseModel):
@@ -120,11 +180,7 @@ def delete_my_account(user: CurrentUser):
 def request_otp(request: Request, body: OtpRequest):
     phone = _normalize_phone(body.phone_number)
     otp = f"{secrets.randbelow(1_000_000):06d}"
-    _otp_store[phone] = {
-        "otp": otp,
-        "full_name": body.full_name,
-        "expires_at": time.time() + _OTP_TTL_SECONDS,
-    }
+    _set_otp(phone, otp, body.full_name)
     print(f"[MOCK OTP] Phone: {phone} | Code: {otp}")
 
     result = {
@@ -140,7 +196,7 @@ def request_otp(request: Request, body: OtpRequest):
 @limiter.limit("10/minute", key_func=auth_rate_key)  # OTP brute-force prevention
 def verify_otp(request: Request, body: OtpVerify, response: Response):
     phone = _normalize_phone(body.phone_number)
-    entry = _otp_store.get(phone)
+    entry = _pop_otp(phone)
     if not entry:
         raise HTTPException(
             status_code=400,
@@ -179,7 +235,6 @@ def verify_otp(request: Request, body: OtpVerify, response: Response):
         )["id"]
         role = UserRole.CUSTOMER.value
 
-    _otp_store.pop(phone, None)
     tokens = _issue_tokens(str(user_id), role)
     _set_refresh_cookie(response, tokens["refresh_token"])
     return {
@@ -193,6 +248,11 @@ class RefreshResult(BaseModel):
     access_token: str
     role: str
     user_id: str
+
+
+class MobileRefreshResult(RefreshResult):
+    """Response model for mobile JSON refresh responses that include the rotated refresh token."""
+    refresh_token: str
 
 
 @router.post("/refresh-cookie", response_model=RefreshResult)
@@ -216,6 +276,14 @@ def refresh_cookie(request: Request, response: Response):
     if is_token_revoked(payload.get("jti"), str(user_id)):
         raise HTTPException(status_code=401, detail="Token has been revoked")
 
+    # Single-use rotation: revoke the presented refresh token's jti so it cannot be reused.
+    try:
+        revoke_token(payload.get("jti"), str(user_id), payload.get("exp"))
+    except Exception:
+        # If revocation fails for some reason, log and continue to avoid locking out users;
+        # revoke_token itself should handle idempotency.
+        logger.exception("Failed to revoke used refresh token jti during rotation")
+
     tokens = _issue_tokens(str(user_id), payload.get("role") or UserRole.CUSTOMER.value)
     _set_refresh_cookie(response, tokens["refresh_token"])
     return {
@@ -223,6 +291,80 @@ def refresh_cookie(request: Request, response: Response):
         "role": payload.get("role") or UserRole.CUSTOMER.value,
         "user_id": user_id,
     }
+
+
+@router.post("/refresh", response_model=MobileRefreshResult)
+async def refresh(request: Request, response: Response):
+    """
+    Mobile-friendly refresh endpoint.
+    - Accepts JSON body {"refresh_token": "..."} for mobile clients or when X-Client-Type: mobile header is present.
+    - For web/browser clients, the existing /refresh-cookie endpoint should be used (cookies are preferred).
+    - Enforces single-use rotation by revoking the presented refresh token's jti and returning a rotated refresh token in the JSON response.
+    """
+    refresh = None
+    # Detect mobile client hint via header
+    client_type = request.headers.get("X-Client-Type", "").lower()
+
+    if client_type == "mobile":
+        # Expect JSON payload with refresh_token for mobile
+        try:
+            body = await request.json()
+            refresh = body.get("refresh_token")
+        except Exception:
+            raise HTTPException(status_code=401, detail="Missing or invalid JSON body for mobile refresh")
+        if not refresh:
+            raise HTTPException(status_code=401, detail="Missing refresh_token in request body")
+    else:
+        # Fallback: if a JSON body contains refresh_token, allow it (helps some clients)
+        try:
+            body = await request.json()
+            if isinstance(body, dict) and body.get("refresh_token"):
+                refresh = body.get("refresh_token")
+        except Exception:
+            # no valid JSON body; fall back to cookie behavior
+            pass
+
+    # If still no refresh token found, try cookie (browser flow)
+    if not refresh:
+        refresh = request.cookies.get(_REFRESH_COOKIE)
+        if not refresh:
+            raise HTTPException(status_code=401, detail="No refresh token provided")
+
+    payload = _decode_token(refresh)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid refresh token payload")
+
+    # Deny-list check: reject revoked (logout / force-logout) refresh tokens.
+    if is_token_revoked(payload.get("jti"), str(user_id)):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+
+    # Single-use rotation: revoke the presented refresh token's jti so it cannot be reused.
+    try:
+        revoke_token(payload.get("jti"), str(user_id), payload.get("exp"))
+    except Exception:
+        logger.exception("Failed to revoke used refresh token jti during rotation")
+
+    # Issue rotated tokens
+    tokens = _issue_tokens(str(user_id), payload.get("role") or UserRole.CUSTOMER.value)
+
+    # For cookie-based (browser) flow, set HttpOnly cookie. For mobile/JSON flow, return rotated refresh token in body.
+    if client_type == "mobile" or (not request.cookies.get(_REFRESH_COOKIE)):
+        # Return rotated refresh token in JSON body for mobile clients
+        return {
+            "access_token": tokens["access_token"],
+            "role": payload.get("role") or UserRole.CUSTOMER.value,
+            "user_id": user_id,
+            "refresh_token": tokens["refresh_token"],
+        }
+    else:
+        # Browser flow: rotate cookie
+        _set_refresh_cookie(response, tokens["refresh_token"])
+        return {
+            "access_token": tokens["access_token"],
+            "role": payload.get("role") or UserRole.CUSTOMER.value,
+            "user_id": user_id,
+        }
 
 
 @router.post("/logout")

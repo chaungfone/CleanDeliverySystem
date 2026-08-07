@@ -1,4 +1,4 @@
-﻿package com.example.cleandelivery.data.remote
+package com.example.cleandelivery.data.remote
 
 import com.example.cleandelivery.data.preference.TokenManager
 import okhttp3.Interceptor
@@ -6,9 +6,9 @@ import okhttp3.Response
 import javax.inject.Inject
 
 /**
- * Attaches the stored JWT to every authenticated request.
+ * Attaches the stored JWT to every authenticated request using Bearer scheme.
  */
-class AuthInterceptor @Inject constructor(
+class BearerAuthInterceptor @Inject constructor(
     private val tokenManager: TokenManager
 ) : Interceptor {
 

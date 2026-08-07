@@ -1,3 +1,14 @@
+﻿import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+# Set environment variables for the test
+os.environ['DEBUG'] = 'true'
+os.environ['SUPABASE_URL'] = 'http://example.com'
+os.environ['SUPABASE_KEY'] = 'anon'
+os.environ['SUPABASE_JWT_SECRET'] = 'secret'
+os.environ['CORS_ORIGINS_JSON'] = '["http://localhost"]'  # Non-wildcard for testing
+
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
