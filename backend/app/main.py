@@ -52,18 +52,17 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Middleware - Production Tightened
-# Allow all origins in Vercel serverless since frontend and API share the same domain.
-cors_origins = settings.CORS_ORIGINS
-if os.getenv("VERCEL") == "1":
-    cors_origins = ["*"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
-)
+# On Vercel the frontend and API share the same domain, so CORS is unnecessary.
+# Skip it to avoid the invalid wildcard-origin + credentials combination.
+if os.getenv("VERCEL") != "1":
+    cors_origins = settings.CORS_ORIGINS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    )
 
 # Security Headers Middleware
 @app.middleware("http")
