@@ -8,6 +8,16 @@ export default defineConfig({
     port: 3000
   },
   build: {
+    // Do NOT preload route-only heavy chunks (leaflet/charts) on the entry page;
+    // they should only download when their lazy route is visited.
+    modulePreload: {
+      polyfill: false,
+      resolveDependencies: (_filename, deps) =>
+        deps.filter((d) => !/charts-|leaflet-/.test(d)),
+    },
+    // Rolldown emits every chunk's CSS as a separate render-blocking <link>.
+    // Bundle into one stylesheet so the login page has a single CSS request.
+    cssCodeSplit: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
