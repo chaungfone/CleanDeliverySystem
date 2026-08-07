@@ -20,6 +20,7 @@ from app.core.security import (
     revoke_token,
 )
 from app.models.user import UserResponse, UserRole
+from app.services.sms import sms_service
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,20 @@ def _otp_key(phone: str) -> str:
 
 
 def _set_otp(phone: str, otp: str, full_name: str | None) -> None:
-    """Store OTP in Redis with TTL if available, otherwise in-memory dict."""
+    """Store OTP in Supabase otp_codes table so it survives serverless instance restarts."""
+    try:
+        db = get_supabase_client()
+        expires_at_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + _OTP_TTL_SECONDS))
+        payload = {
+            "phone_number": phone,
+            "otp_code": otp,
+            "full_name": full_name,
+            "expires_at": expires_at_iso,
+        }
+        db.table("otp_codes").upsert(payload, on_conflict="phone_number").execute()
+        return
+    except Exception as exc:
+        logger.warning("Supabase OTP store failed, falling back to Redis/in-memory: %s", str(exc))
     client = _get_redis_client()
     payload = {"otp": otp, "full_name": full_name, "expires_at": time.time() + _OTP_TTL_SECONDS}
     if client:
@@ -104,12 +118,43 @@ def _set_otp(phone: str, otp: str, full_name: str | None) -> None:
             return
         except Exception:
             pass
-    # Fallback in-memory
     _otp_store[phone] = payload
 
 
 def _pop_otp(phone: str) -> dict[str, Any] | None:
-    """Retrieve and remove OTP entry. Returns None when missing."""
+    """Retrieve and remove OTP from Supabase otp_codes table first, then fallback to Redis/in-memory."""
+    try:
+        db = get_supabase_client()
+        res = db.table("otp_codes").select("phone_number, otp_code, full_name, expires_at").eq("phone_number", phone).maybe_single().execute()
+        row = res.data if res else None
+        if row:
+            try:
+                db.table("otp_codes").delete().eq("phone_number", phone).execute()
+            except Exception:
+                pass
+            import datetime as _dt
+            expires_at_epoch: float = 0.0
+            expires_raw = row.get("expires_at")
+            if isinstance(expires_raw, str):
+                try:
+                    if expires_raw.endswith("Z"):
+                        expires_dt = _dt.datetime.fromisoformat(expires_raw.replace("Z", "+00:00"))
+                    else:
+                        expires_dt = _dt.datetime.fromisoformat(expires_raw)
+                    if expires_dt.tzinfo is None:
+                        expires_dt = expires_dt.replace(tzinfo=_dt.timezone.utc)
+                    expires_at_epoch = expires_dt.timestamp()
+                except Exception:
+                    expires_at_epoch = 0.0
+            elif isinstance(expires_raw, (int, float)):
+                expires_at_epoch = float(expires_raw)
+            return {
+                "otp": row.get("otp_code"),
+                "full_name": row.get("full_name"),
+                "expires_at": expires_at_epoch,
+            }
+    except Exception as exc:
+        logger.warning("Supabase OTP fetch failed, falling back to Redis/in-memory: %s", str(exc))
     client = _get_redis_client()
     if client:
         try:
@@ -120,7 +165,6 @@ def _pop_otp(phone: str) -> dict[str, Any] | None:
             return json.loads(raw)
         except Exception:
             pass
-    # Fallback in-memory
     return _otp_store.pop(phone, None)
 
 
@@ -179,15 +223,31 @@ def delete_my_account(user: CurrentUser):
 @limiter.limit("5/minute", key_func=auth_rate_key)  # 5 OTP requests per IP+phone
 def request_otp(request: Request, body: OtpRequest):
     phone = _normalize_phone(body.phone_number)
-    otp = f"{secrets.randbelow(1_000_000):06d}"
+    otp: str | None = None
+    delivery_status = "not_configured"
+    try:
+        configured = (
+            (sms_service.base_url and sms_service.api_key)
+            or (sms_service.twilio_sid and sms_service.twilio_auth_token)
+        )
+        if configured:
+            otp = sms_service.send_otp(phone)
+            delivery_status = "sent"
+    except Exception as exc:  # noqa: BLE001 - never let SMS failures block OTP issuance; fall back.
+        logger.exception("SMS provider error when sending OTP to %s: %s", phone, str(exc))
+        delivery_status = "sms_failed"
+        otp = None
+    if not otp:
+        otp = f"{secrets.randbelow(1_000_000):06d}"
     _set_otp(phone, otp, body.full_name)
-    print(f"[MOCK OTP] Phone: {phone} | Code: {otp}")
+    print(f"[OTP] Phone: {phone} | Code: {otp} | Status: {delivery_status}")
 
     result = {
-        "message": "OTP sent (mock: check console)",
+        "message": f"OTP processed ({delivery_status})",
         "phone_number": phone,
     }
-    if settings.DEBUG:
+    expose_otp = settings.DEBUG or delivery_status != "sent"
+    if expose_otp:
         result["debug_otp"] = otp
     return result
 

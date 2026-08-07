@@ -1,20 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "web-dashboard/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    },
-    {
-      "src": "backend/app/main.py",
-      "use": "@vercel/python"
+  "installCommand": "cd web-dashboard && npm install",
+  "buildCommand": "cd web-dashboard && npm run build",
+  "outputDirectory": "web-dashboard/dist",
+  "functions": {
+    "api/**/*.py": {
+      "runtime": "@vercel/python@5"
     }
-  ],
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/backend/app/main.py" },
-    { "source": "/(.*)", "destination": "/web-dashboard/dist/index.html" }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
