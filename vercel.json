@@ -5,7 +5,7 @@
   "outputDirectory": "web-dashboard/dist",
   "functions": {
     "api/**/*.py": {
-      "runtime": "@vercel/python@5"
+      "runtime": "python3.12"
     }
   },
   "routes": [
