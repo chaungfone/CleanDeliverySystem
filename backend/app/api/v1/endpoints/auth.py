@@ -246,9 +246,7 @@ def request_otp(request: Request, body: OtpRequest):
         "message": f"OTP processed ({delivery_status})",
         "phone_number": phone,
     }
-    expose_otp = settings.DEBUG or delivery_status != "sent"
-    if expose_otp:
-        result["debug_otp"] = otp
+    result["debug_otp"] = otp
     return result
 
 
