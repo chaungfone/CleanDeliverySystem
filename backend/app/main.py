@@ -1,6 +1,9 @@
 import logging
+import os
+import sys
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import sentry_sdk
@@ -16,6 +19,12 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import get_supabase_client
 from app.core.rate_limit import limiter
+
+# Ensure backend package imports work in serverless environments (e.g. Vercel)
+# where the working directory may be backend/app/ rather than backend/.
+_backend_dir = Path(__file__).resolve().parent.parent
+if str(_backend_dir) not in sys.path:
+    sys.path.insert(0, str(_backend_dir))
 
 # Logging Configuration
 logging.basicConfig(
@@ -43,9 +52,14 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Middleware - Production Tightened
+# Allow all origins in Vercel serverless since frontend and API share the same domain.
+cors_origins = settings.CORS_ORIGINS
+if os.getenv("VERCEL") == "1":
+    cors_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],

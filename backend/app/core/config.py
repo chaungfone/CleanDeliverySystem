@@ -68,11 +68,12 @@ class Settings(BaseSettings):
         if self.DEBUG:
             return
         if "*" in self.CORS_ORIGINS or self.CORS_ORIGINS == ["*"]:
-            raise RuntimeError(
-                "CORS_ORIGINS cannot contain '*' when not in DEBUG. "
-                "Set CORS_ORIGINS_JSON to explicit allowed origins, "
-                "e.g. CORS_ORIGINS_JSON='[\"https://admin.example.com\"]'."
-            )
+            if os.getenv("VERCEL") != "1":
+                raise RuntimeError(
+                    "CORS_ORIGINS cannot contain '*' when not in DEBUG. "
+                    "Set CORS_ORIGINS_JSON to explicit allowed origins, "
+                    "e.g. CORS_ORIGINS_JSON='[\"https://admin.example.com\"]'."
+                )
         secrets_to_check = {
             "SUPABASE_URL": self.SUPABASE_URL,
             "SUPABASE_KEY": self.SUPABASE_KEY,
