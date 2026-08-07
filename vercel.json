@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "builds": [
     {
       "src": "web-dashboard/package.json",
@@ -9,15 +10,20 @@
     },
     {
       "src": "backend/app/main.py",
-      "use": "@vercel/python",
-      "config": {
-        "runtime": "python3.10"
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/backend/app/main.py" },
-    { "src": "/(.*)", "dest": "/web-dashboard/dist/$1" },
-    { "src": "/(.*)", "dest": "/web-dashboard/dist/index.html" }
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/app/main.py"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/web-dashboard/$1"
+    }
   ]
 }
