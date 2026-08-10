@@ -3,9 +3,9 @@
   "installCommand": "cd web-dashboard && npm install",
   "buildCommand": "cd web-dashboard && npm run build",
   "outputDirectory": "web-dashboard/dist",
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/index.py" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/[...path]" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
