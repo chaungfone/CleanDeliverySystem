@@ -1,64 +1,85 @@
-# Deployment Guide: Koyeb (Backend) & Vercel (Frontend)
+# Deployment Guide: Vercel (Frontend + Serverless Backend)
 
-## Backend — Koyeb
+> **Current architecture:** the FastAPI backend is deployed on Vercel as a
+> Python serverless function (`api/index.py`, wrapped with Mangum), and the
+> dashboard is served from `web-dashboard/dist`. Both live on the same origin,
+> so `VITE_API_URL=/api/v1` and no CORS is required.
 
-### Prerequisites
-- A [Koyeb](https://app.koyeb.com/) account (no VPN required).
-- Git repository hosted on GitHub/GitLab.
-- Environment variables ready (see `.env.production` in `backend/`).
+## 1. Vercel project settings (IMPORTANT)
 
-### Steps
-1. Push the repository to GitHub/GitLab.
-2. In the [Koyeb Control Panel](https://app.koyeb.com/), create a new **Web Service**.
-3. Select your repository and branch.
-4. Set the **Build path** to `backend` and use the included `Dockerfile`.
-5. Under **Environment Variables**, add all variables from `backend/.env.production`.
-6. Set the **Port** to `8000`.
-7. Deploy. Koyeb will build the image and expose the service at `https://<app-name>.<koyeb-app-id>.koyeb.app`.
+| Setting | Value |
+|---------|-------|
+| **Root Directory** | `/` (repo root — NOT `web-dashboard`) |
+| **Framework Preset** | Other (Vite is detected from `vercel.json` build commands) |
+| **Build Command** | `cd web-dashboard && npm run build` |
+| **Install Command** | `cd web-dashboard && npm install` |
+| **Output Directory** | `web-dashboard/dist` |
 
-### Health Check
-Verify the deployment:
-```bash
-curl https://<your-koyeb-app>.koyeb.app/healthz
-```
+> ⚠️ The Python function lives at `api/index.py` and imports the backend from
+> `backend/`. Both must be inside the deployed root, so the Root Directory
+> MUST be the repository root. If it is set to `web-dashboard`, every
+> `/api/v1/*` request falls through to the SPA fallback and returns
+> `index.html`, and the dashboard shows
+> *"The API returned an HTML page instead of JSON."*
 
-Expected response:
+These settings are already encoded in the root `vercel.json`:
+
 ```json
 {
-  "status": "ok",
-  "services": { "supabase": "connected" }
-}
-```
-
----
-
-## Frontend — Vercel
-
-### Prerequisites
-- A [Vercel](https://vercel.com/) account (no VPN required).
-- Git repository hosted on GitHub/GitLab.
-
-### Steps
-1. In the [Vercel Dashboard](https://vercel.com/new), import the project.
-2. Set the **Root Directory** to `web-dashboard`.
-3. Add environment variables from `web-dashboard/.env.production` (e.g., `VITE_API_BASE_URL` pointing to the Koyeb backend).
-4. Deploy. Vercel will build the React app and serve it.
-
-### SPA Routing
-The included `vercel.json` handles client-side routing via rewrites:
-```json
-{
-  "rewrites": [
-    { "source": "/(.*)", "dest": "/index.html" }
+  "version": 2,
+  "installCommand": "cd web-dashboard && npm install",
+  "buildCommand": "cd web-dashboard && npm run build",
+  "outputDirectory": "web-dashboard/dist",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
 ```
 
-### Verify
-Open the deployed Vercel URL and confirm the app loads and can reach the backend API.
+## 2. Environment variables (Vercel dashboard)
+
+These are required at import time by `backend/app/core/config.py`; if they are
+missing or placeholders the function fails to boot:
+
+```
+SUPABASE_URL          = https://<project-ref>.supabase.co
+SUPABASE_KEY          = <anon or service_role key>   # backend -> service_role
+SUPABASE_JWT_SECRET   = <JWT secret from Supabase dashboard>
+```
+
+Optional: `DATABASE_URL`, `DIRECT_URL`, `SENTRY_DSN`, `REDIS_URL`.
+
+The Python dependencies are installed from the root `requirements.txt`
+(`fastapi`, `supabase`, `pydantic-settings`, `mangum`, ...). No runtime pin is
+needed (zero-config Python detection).
+
+## 3. Deploy & verify
+
+Push to the branch connected to Vercel, or redeploy from the dashboard. Then
+check the API responds with JSON (NOT HTML):
+
+```
+https://<your-site>.vercel.app/api/v1/openapi.json
+```
+
+- JSON OpenAPI document → backend is live ✅
+- HTML (the dashboard page) → Root Directory is still `web-dashboard` ❌
+
+Also confirm the health endpoint from the backend service, e.g. via a local
+FastAPI run, shows `"services": { "supabase": "connected" }`.
+
+## 4. Troubleshooting checklist
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `/api/*` returns HTML (SPA page) | Root Directory = `web-dashboard` | Set Root Directory to `/` |
+| `/api/*` returns 503 "Backend configuration error… Missing required environment variables" | `SUPABASE_URL`/`SUPABASE_KEY`/`SUPABASE_JWT_SECRET` missing or placeholders | Set real values in Vercel env vars |
+| Data pages show "Server error" | Backend boot failure (see previous row) | See above |
+| Login bypass works but data pages are empty | Demo session has no real credentials | Fix env vars so real login works |
 
 ---
 
-## Notes
-- Both platforms support automatic deployments on every push to the configured branch.
-- No VPN or special network configuration is required for either platform.
+*Runbook:* `docs/runbooks/server_down.md` · *Frontend UI spec:*
+`docs/ui-design-system.md`.
