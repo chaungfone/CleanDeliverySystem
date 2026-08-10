@@ -2,6 +2,8 @@ import json
 import logging
 import os
 from functools import lru_cache
+from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,17 +21,68 @@ _PLACEHOLDER_MARKERS = (
     "xxxx",
 )
 
+_ENVIRONMENT_VALUES = ("development", "staging", "production", "test")
+EnvironmentName = Literal["development", "staging", "production", "test"]
+
+
+def _detect_environment() -> EnvironmentName:
+    """
+    Determine which environment we're running in.
+
+    Resolution order (first match wins):
+      1. APP_ENVIRONMENT / ENVIRONMENT / ENV variables (explicit operator override)
+      2. Vercel's VERCEL_ENV (system variable for Preview/Production/Development)
+      3. Fallback: 'production' for safety (never accidentally ship DEBUG=True)
+    """
+    for key in ("APP_ENVIRONMENT", "ENVIRONMENT", "ENV"):
+        raw = os.getenv(key)
+        if raw:
+            lowered = raw.strip().lower()
+            if lowered in _ENVIRONMENT_VALUES:
+                return lowered  # type: ignore[return-value]
+    vercel_env = (os.getenv("VERCEL_ENV") or "").strip().lower()
+    if vercel_env == "preview":
+        return "staging"
+    if vercel_env == "production":
+        return "production"
+    if vercel_env == "development":
+        return "development"
+    return "production"
+
+
+def _env_files() -> list[str | Path]:
+    """
+    Ordered list of dotenv files to load (later entries override earlier ones).
+    Loads: .env -> .env.{environment} -> .env.{environment}.local
+    Files that don't exist are silently skipped by pydantic-settings.
+    """
+    env = _detect_environment()
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+    candidates: list[str | Path] = []
+    for name in (".env", f".env.{env}", f".env.{env}.local"):
+        candidates.append(project_root / name)
+    # pydantic-settings 2.x supports a list of env files; non-existent paths are OK.
+    return candidates
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_files(),
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
+    ENVIRONMENT: EnvironmentName = Field(default_factory=_detect_environment)
+
     PROJECT_NAME: str = "Clean Water Delivery Management System"
     API_V1_PREFIX: str = "/api/v1"
-    DEBUG: bool = False
+
+    @property
+    def DEBUG(self) -> bool:  # type: ignore[override]
+        # Always DEBUG for local dev; staging/production opt-in via explicit DEBUG=1.
+        if self.ENVIRONMENT == "development":
+            return True
+        return os.getenv("DEBUG", "").strip() in {"1", "true", "True", "yes"}
     # Production MUST override via CORS_ORIGINS_JSON; only defaults to ["*"] in dev/DEBUG.
     CORS_ORIGINS: list[str] = Field(
         default_factory=lambda: json.loads(os.getenv("CORS_ORIGINS_JSON", '["*"]')),

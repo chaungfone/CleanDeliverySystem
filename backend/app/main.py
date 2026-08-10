@@ -22,7 +22,7 @@ from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import api_router
-from app.core.config import settings
+from app.core.config import get_settings, settings
 from app.core.database import get_supabase_client
 from app.core.rate_limit import limiter
 
@@ -109,6 +109,16 @@ async def log_requests(request: Request, call_next: Callable):
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
+
+def _registered_route_paths() -> list[str]:
+    paths: set[str] = set()
+    for route in getattr(app, "routes", []):
+        path = getattr(route, "path", None)
+        if isinstance(path, str):
+            paths.add(path)
+    return sorted(paths)
+
+
 # Standardized Error Response Helper
 def standardized_error(code: int, message: str, details: Any = None) -> JSONResponse:
     return JSONResponse(
@@ -123,10 +133,30 @@ def standardized_error(code: int, message: str, details: Any = None) -> JSONResp
         },
     )
 
+
 # Exception Handlers
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    if exc.status_code == 404:
+        debug = get_settings().DEBUG or os.getenv("VERCEL") == "1"
+        detail: Any = str(exc.detail)
+        if debug:
+            detail = {
+                "reason": str(exc.detail),
+                "requested_path": request.url.path,
+                "requested_method": request.method,
+                "api_prefix_registered": settings.API_V1_PREFIX,
+                "known_routes_sample": _registered_route_paths()[:50],
+                "env_hint": (
+                    "If you see this JSON body, the request reached FastAPI. "
+                    "If you see a plain 'Not found' HTML page instead, the request "
+                    "never reached the Python function - check api/[...path].py "
+                    "discovery and Vercel function logs."
+                ),
+            }
+        return standardized_error(404, "Not found", detail)
     return standardized_error(exc.status_code, str(exc.detail))
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -136,10 +166,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     ]
     return standardized_error(422, "Request validation failed", details)
 
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled error on %s %s: %s", request.method, request.url.path, exc)
     return standardized_error(500, "Internal server error")
+
 
 # Advanced Health Check
 @app.get("/healthz", tags=["health"])
@@ -157,4 +189,7 @@ async def health_check() -> dict:
         health["services"]["supabase"] = "unreachable"
         health["status"] = "degraded"
 
+    # Surface route listing for 404 debugging.
+    health["routes"] = _registered_route_paths()
+    health["api_v1_prefix"] = settings.API_V1_PREFIX
     return health
