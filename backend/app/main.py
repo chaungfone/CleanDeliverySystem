@@ -244,10 +244,49 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 @app.get("/healthz", tags=["health"])
 @app.get("/api/healthz", tags=["health"])
 async def health_check() -> dict:
-    health = {"status": "ok", "timestamp": time.time(), "services": {}}
+    health = {"status": "ok", "timestamp": time.time(), "services": {}, "env": {}, "configuration": {}}
+
+    # Environment Configuration diagnostics (never expose actual secrets; only report presence/status)
+    s = get_settings()
+    env_status: dict = {}
+    def _stat(name: str, value: str | None) -> dict:
+        if not value:
+            return {"present": False, "placeholder": False}
+        is_ph = s._is_placeholder(value)
+        truncated = "" if is_ph else f"{value[:4]}***{value[-4:]}" if len(value or "") >= 10 else "***"
+        return {"present": True, "placeholder": is_ph, "preview": truncated}
+    env_status["SUPABASE_URL"] = _stat("SUPABASE_URL", s.SUPABASE_URL)
+    env_status["SUPABASE_KEY"] = _stat("SUPABASE_KEY", s.SUPABASE_KEY)
+    env_status["SUPABASE_JWT_SECRET"] = _stat("SUPABASE_JWT_SECRET", s.SUPABASE_JWT_SECRET)
+    env_status["DATABASE_URL"] = _stat("DATABASE_URL", s.DATABASE_URL)
+    env_status["SENTRY_DSN"] = _stat("SENTRY_DSN", s.SENTRY_DSN)
+    env_status["REDIS_URL"] = _stat("REDIS_URL", s.REDIS_URL)
+
+    required_ok = (
+        s.SUPABASE_URL and not s._is_placeholder(s.SUPABASE_URL) and
+        s.SUPABASE_KEY and not s._is_placeholder(s.SUPABASE_KEY) and
+        s.SUPABASE_JWT_SECRET and not s._is_placeholder(s.SUPABASE_JWT_SECRET)
+    )
+    env_status["ALL_REQUIRED_PRESENT"] = bool(required_ok)
+    health["env"] = env_status
+
+    health["configuration"]["environment"] = s.ENVIRONMENT
+    health["configuration"]["debug"] = s.DEBUG
+    health["configuration"]["api_prefix"] = s.API_V1_PREFIX
+    health["configuration"]["cors_origins_sample"] = s.CORS_ORIGINS[:10]
+    try:
+        s.validate_secrets()
+        health["configuration"]["validate_secrets_ok"] = True
+    except Exception as ve:
+        health["configuration"]["validate_secrets_ok"] = False
+        health["configuration"]["validate_secrets_error"] = str(ve)
+        if health["status"] == "ok":
+            health["status"] = "degraded"
 
     # Check Supabase Connection
     try:
+        if not required_ok:
+            raise RuntimeError("SUPABASE_URL/SUPABASE_KEY/SUPABASE_JWT_SECRET required secrets not configured (see env.* in response). Login/auth endpoints will fail until these are set in the hosting platform environment variables (Vercel Dashboard → Settings → Environment Variables).")
         db = get_supabase_client()
         # Simple query to check connectivity
         db.table("users").select("id", count="exact").limit(1).execute()
@@ -255,7 +294,9 @@ async def health_check() -> dict:
     except Exception as e:  # noqa: BLE001 - health endpoint must never 500; degrade instead
         logger.error("Healthcheck: Supabase unreachable: %s", str(e))
         health["services"]["supabase"] = "unreachable"
-        health["status"] = "degraded"
+        health["services"]["supabase_error"] = str(e)
+        if health["status"] == "ok":
+            health["status"] = "degraded"
 
     # Surface route listing for 404 debugging.
     health["routes"] = _registered_route_paths()
