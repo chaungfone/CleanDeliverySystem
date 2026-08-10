@@ -101,4 +101,16 @@ test.describe('Login responsive breakpoints', () => {
     // Redirect to the dashboard root once the bypass auto-verifies.
     await page.waitForURL(`${BASE_URL}/`, { timeout: 8000 });
   });
+
+  test('fallback demo login signs in directly when the backend is down', async ({ page }) => {
+    await page.goto(`${BASE_URL}/login`);
+    await page.fill('input[name="phone_number"]', '+959123456789');
+    // Simulate an unreachable backend: the request-otp call fails immediately.
+    await page.route('**/api/v1/auth/request-otp', (route) => route.abort());
+    await page.getByRole('button', { name: /request otp/i }).click();
+    await page.waitForURL(`${BASE_URL}/`, { timeout: 8000 });
+    // Demo session is stored so the shell renders (no backend round-trip).
+    const token = await page.evaluate(() => localStorage.getItem('cd_dashboard_token'));
+    expect(token).toMatch(/^demo:/);
+  });
 });

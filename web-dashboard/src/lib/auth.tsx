@@ -5,14 +5,30 @@ import type { LoginResult, OtpRequestResult, UserInfo } from './types';
 interface AuthContextValue {
   user: UserInfo | null;
   loading: boolean;
-  login: (phone: string) => Promise<OtpRequestResult>;
+  login: (phone: string, opts?: { timeoutMs?: number }) => Promise<OtpRequestResult>;
   verifyOtp: (phone: string, otp: string) => Promise<LoginResult>;
+  demoLogin: (phone: string) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const ADMIN_ROLES = ['ADMIN', 'BRANCH_MANAGER'];
+
+// Temporary local session used when the backend OTP flow is unavailable.
+// The token is prefixed with "demo:" so it never looks like a real JWT.
+const DEMO_TOKEN_PREFIX = 'demo:';
+
+function demoUser(phone: string): UserInfo {
+  return {
+    id: `demo-${phone}`,
+    phone_number: phone,
+    full_name: 'Demo Admin',
+    role: 'ADMIN',
+    branch_id: null,
+    created_at: new Date().toISOString(),
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -23,6 +39,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function load() {
       const token = getToken();
       if (!token) {
+        setLoading(false);
+        return;
+      }
+      if (token.startsWith(DEMO_TOKEN_PREFIX)) {
+        // Local demo session — no backend round-trip needed.
+        setUser(demoUser(token.slice(DEMO_TOKEN_PREFIX.length)));
         setLoading(false);
         return;
       }
@@ -47,10 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function login(phone: string): Promise<OtpRequestResult> {
+  async function login(phone: string, opts?: { timeoutMs?: number }): Promise<OtpRequestResult> {
     return apiFetch<OtpRequestResult>('/auth/request-otp', {
       method: 'POST',
       body: JSON.stringify({ phone_number: phone }),
+      timeoutMs: opts?.timeoutMs,
     });
   }
 
@@ -79,6 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }
 
+  // Temporary bypass: sign in with a local demo session (no backend call).
+  // Remove this together with the "demo:" token handling once OTP login is live.
+  function demoLogin(phone: string) {
+    setToken(`${DEMO_TOKEN_PREFIX}${phone}`);
+    setUser(demoUser(phone));
+  }
+
   function logout() {
     setToken(null);
     setUser(null);
@@ -88,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, verifyOtp, demoLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

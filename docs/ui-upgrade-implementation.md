@@ -49,6 +49,12 @@ teal).
   desktop only) and a form panel with the mobile brand header.
 - Same OTP flow, same `name="phone_number"` / `name="otp"` inputs, same
   buttons — no behavioral change.
+- **Temporary login bypass:** entering a phone number + clicking the button
+  first tries the real backend flow (request-otp → debug_otp → verify-otp,
+  8 s timeout). On any failure it falls back to a local **demo session**
+  (`demoLogin` in `lib/auth.tsx` — token prefixed `demo:`, synthetic ADMIN
+  user, no backend call), so the dashboard is always reachable while OTP is
+  not yet live. Must be removed for production once SMS OTP works.
 
 ### 2.5 Pages
 - `DashboardOverview`: gradient stat-card icon tiles with lift-on-hover,
