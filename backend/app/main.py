@@ -52,17 +52,84 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Middleware - Production Tightened
-# On Vercel the frontend and API share the same domain, so CORS is unnecessary.
-# Skip it to avoid the invalid wildcard-origin + credentials combination.
-if os.getenv("VERCEL") != "1":
-    cors_origins = settings.CORS_ORIGINS
+# On Vercel the frontend and API share the same apex domain BUT requests can arrive
+# with a different Origin header (mobile capacitor://, staging preview, etc.) and the
+# browser enforces that cookies set with `credentials: 'include'` require explicit
+# Access-Control-Allow-Credentials + a non-wildcard Origin. Therefore we MUST set
+# the CORS middleware even on Vercel; it does not hurt "same-origin" requests.
+#
+# FastAPI's CORSMiddleware rejects the combination allow_origins=["*"] + allow_credentials=True
+# (it would not reflect Origin). Instead, when the configured list is "*" (dev / Vercel
+# same-origin case) we install a lightweight dynamic reflection below that only echoes
+# a known-present Origin header and always sends Allow-Credentials=true.
+from urllib.parse import urlparse
+
+cors_origins = settings.CORS_ORIGINS
+_origin_allow_all = not cors_origins or cors_origins == ["*"]
+if not _origin_allow_all:
+    # Explicit safelist configured by operator — use the framework middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+        allow_headers=["Authorization", "Content-Type", "X-Requested-With", "X-Client-Type"],
+        expose_headers=["X-CSP-Nonce"],
     )
+else:
+    # Dynamic reflection: only apply CORS response headers when a request has an
+    # Origin header (skip same-origin / no-origin scenarios). The reflected Origin
+    # is validated to be a syntactically valid HTTP(S)/capacitor URL.
+    _ALLOWED_METHODS_CSV = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    _ALLOWED_HEADERS_CSV = "Authorization, Content-Type, X-Requested-With, X-Client-Type"
+
+    def _is_safe_origin(origin: str) -> bool:
+        if not origin or not isinstance(origin, str):
+            return False
+        if origin in ("capacitor://localhost", "http://localhost", "http://localhost:3000", "http://localhost:4173", "http://127.0.0.1:3000", "http://127.0.0.1:4173"):
+            return True
+        try:
+            parsed = urlparse(origin)
+            return parsed.scheme in ("http", "https", "capacitor") and bool(parsed.netloc)
+        except Exception:
+            return False
+
+    @app.middleware("http")
+    async def _reflective_cors(request: Request, call_next: Callable):
+        origin = request.headers.get("origin")
+        is_preflight = request.method == "OPTIONS" and origin is not None
+        if is_preflight:
+            # Short-circuit: respond to preflight directly so that later middlewares
+            # (e.g. auth guards) do not reject OPTIONS with 401/405.
+            if _is_safe_origin(origin):
+                from fastapi.responses import Response
+                return Response(
+                    status_code=204,
+                    headers={
+                        "Access-Control-Allow-Origin": origin,
+                        "Access-Control-Allow-Credentials": "true",
+                        "Access-Control-Allow-Methods": _ALLOWED_METHODS_CSV,
+                        "Access-Control-Allow-Headers": _ALLOWED_HEADERS_CSV,
+                        "Access-Control-Expose-Headers": "X-CSP-Nonce",
+                        "Access-Control-Max-Age": "7200",
+                        "Vary": "Origin",
+                    },
+                    media_type="text/plain",
+                )
+        response = await call_next(request)
+        if origin and _is_safe_origin(origin):
+            existing_ao = response.headers.get("Access-Control-Allow-Origin")
+            if not existing_ao or existing_ao == "*":
+                response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Expose-Headers"] = "X-CSP-Nonce"
+            vary = response.headers.get("Vary")
+            if vary:
+                if "Origin" not in vary:
+                    response.headers["Vary"] = f"{vary}, Origin"
+            else:
+                response.headers["Vary"] = "Origin"
+        return response
 
 # Security Headers Middleware
 @app.middleware("http")

@@ -235,6 +235,13 @@ def is_token_revoked(jti: str | None, user_id: str | None = None) -> bool:
 
     A per-user marker row `user:{user_id}` allows "revoke all sessions"
     (password reset / GDPR force logout) without enumerating every jti.
+
+    IMPORTANT: if the deny-list table does not exist yet (migration pending),
+    the Supabase client is misconfigured, or the query otherwise fails,
+    this function logs the error and returns **False** (allow) to avoid
+    locking every valid session out with a 500 that the UI surfaces as
+    "Invalid token". The revocation system degrades gracefully instead of
+    becoming a site-wide denial-of-service.
     """
     candidates: list[str] = []
     if jti:
@@ -254,11 +261,21 @@ def is_token_revoked(jti: str | None, user_id: str | None = None) -> bool:
         )
         row = result.data if result else None
     except APIError as exc:
-        logger.error("Error checking revoked token: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database error while checking token revocation",
-        ) from exc
+        # Table missing / missing RLS / anon-key-without-service-role etc.
+        # Surface in server logs but DO NOT reject every active session.
+        logger.warning(
+            "Revocation check degraded (allowing): Supabase APIError on %s: %s",
+            _REVOKED_TABLE,
+            exc,
+        )
+        return False
+    except Exception as exc:  # noqa: BLE001 - defensive
+        logger.warning(
+            "Revocation check degraded (allowing): unexpected error on %s: %s",
+            _REVOKED_TABLE,
+            exc,
+        )
+        return False
     return bool(row)
 
 

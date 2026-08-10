@@ -40,22 +40,39 @@ _REFRESH_TTL_SECONDS = 30 * 24 * 3600  # 30 days
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
     """Stores the refresh token in an HttpOnly cookie, never exposed to JS/XSS."""
+    secure = not settings.DEBUG
+    same_site: str = "none" if secure else "lax"
     response.set_cookie(
         key=_REFRESH_COOKIE,
         value=refresh_token,
         httponly=True,
-        secure=not settings.DEBUG,
-        samesite="lax",
+        secure=secure,
+        samesite=same_site,
         max_age=_REFRESH_TTL_SECONDS,
-        path=f"{settings.API_V1_PREFIX}/auth",
+        path="/",
     )
 
 
 def _clear_refresh_cookie(response: Response) -> None:
-    response.delete_cookie(
+    secure = not settings.DEBUG
+    same_site: str = "none" if secure else "lax"
+    response.set_cookie(
         key=_REFRESH_COOKIE,
-        path=f"{settings.API_V1_PREFIX}/auth",
+        value="",
+        httponly=True,
+        secure=secure,
+        samesite=same_site,
+        max_age=0,
+        expires="Thu, 01 Jan 1970 00:00:00 GMT",
+        path="/",
     )
+    try:
+        response.delete_cookie(
+            key=_REFRESH_COOKIE,
+            path="/",
+        )
+    except Exception:
+        pass
 
 
 def _normalize_phone(phone: str) -> str:

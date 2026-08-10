@@ -1,4 +1,10 @@
 """JWT jti deny-list / revocation tests (offline, no live DB/network)."""
+import os
+# Force dev env before any imports so cookies use Secure=false for TestClient (HTTP transport).
+os.environ.setdefault('APP_ENVIRONMENT', 'development')
+os.environ.setdefault('ENVIRONMENT', 'development')
+os.environ.setdefault('DEBUG', 'true')
+
 from uuid import uuid4
 
 import pytest
@@ -7,8 +13,14 @@ from fastapi.testclient import TestClient
 from app import main
 from app.api.v1.endpoints import auth as auth_ep
 from app.api.v1.endpoints.auth import _REFRESH_COOKIE
-from app.core import security
+from app.core import security, config
 from app.main import app
+
+# Clear the pydantic-settings LRU cache so dev environment is picked up.
+try:
+    config.get_settings.cache_clear()
+except Exception:
+    pass
 
 
 class _Res:

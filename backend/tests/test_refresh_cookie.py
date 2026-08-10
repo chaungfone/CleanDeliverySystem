@@ -1,12 +1,20 @@
+import os
+# Force dev env before any imports so cookies use Secure=false for TestClient (HTTP transport).
+os.environ.setdefault('APP_ENVIRONMENT', 'development')
+os.environ.setdefault('ENVIRONMENT', 'development')
+os.environ.setdefault('DEBUG', 'true')
+
 import time
 
 import jwt
 from fastapi.testclient import TestClient
 
 from app.api.v1.endpoints.auth import _REFRESH_COOKIE
-from app.core.config import settings
+from app.core.config import settings, get_settings
 from app.core.security import _decode_token
 from app.main import app
+
+get_settings.cache_clear()
 
 client = TestClient(app)
 
