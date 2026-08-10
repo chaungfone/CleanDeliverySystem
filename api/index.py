@@ -107,3 +107,4 @@ else:
         )
 
 app.add_middleware(_OriginalPathRecovery)
+application = app

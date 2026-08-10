@@ -1,19 +1,20 @@
 {
   "version": 2,
-  "installCommand": "pwd; ls -la; (cd web-dashboard && npm install)",
-  "buildCommand": "(cd web-dashboard && npm run build) && echo '---BUILT---' && ls -la web-dashboard/dist && echo '---API FILES---' && ls -la api",
+  "installCommand": "pwd; ls -la; (cd web-dashboard && npm install); ls -la api",
+  "buildCommand": "(cd web-dashboard && npm run build) && echo '---BUILT WEB---' && ls -la web-dashboard/dist && echo '---API FILES PRE-FLIGHT---' && ls -la api && echo '---BACKEND FILES---' && ls -la backend 2>&1 | head -20",
   "outputDirectory": "web-dashboard/dist",
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
     "api/index.py": {
+      "runtime": "python@3.12",
       "includeFiles": "backend/**,{requirements.txt,runtime.txt,api/requirements.txt,api/runtime.txt}"
     }
   },
   "rewrites": [
-    { "source": "/api/healthz", "destination": "/api" },
-    { "source": "/api/v1/:path((?!\\.).*)", "destination": "/api" },
-    { "source": "/api/:path((?!\\.).*)", "destination": "/api" },
+    { "source": "/api/healthz", "destination": "/api/index" },
+    { "source": "/api/v1/:path((?!\\.).*)", "destination": "/api/index" },
+    { "source": "/api/:path((?!\\.).*)", "destination": "/api/index" },
     { "source": "/((?!api/?|assets/?|assets/|favicon\\.ico|robots\\.txt|__vercel-insights).*)", "destination": "/index.html" }
   ]
 }
