@@ -7,7 +7,6 @@
   "trailingSlash": false,
   "functions": {
     "api/index.py": {
-      "runtime": "python@3.12",
       "includeFiles": "backend/**,{requirements.txt,runtime.txt,api/requirements.txt,api/runtime.txt}"
     }
   },
