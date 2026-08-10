@@ -1,10 +1,7 @@
-import copy
-import json
 import os
 import sys
 import traceback
 from pathlib import Path
-from typing import Any
 
 _API_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _API_DIR.parent
@@ -15,195 +12,98 @@ if str(_BACKEND_DIR) not in sys.path:
 os.environ.setdefault("VERCEL", "1")
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
 
-try:
-    from app.main import app as _fastapi_app
-    app = _fastapi_app
-    application = _fastapi_app
-except Exception:  # noqa: BLE001 - will be reported by handler below
-    app = None
-    application = None
-
-
-def _extract_original_path(event: Any) -> str:
-    """
-    Recover the ORIGINAL request path the user/frontend sent BEFORE any
-    Vercel rewrite rules ran. Vercel forwards API requests to this exact
-    file via `rewrites: [ { source: '/api/:path*', dest: '/api/index' } ]`
-    and, by default, overwrites event.path / rawPath /
-    requestContext.http.path with the rewritten destination ("/api/index"),
-    which FastAPI can never match to "/api/v1/...".
-
-    To defeat that we try, in order of preference:
-      1. x-vercel-original-url / x-forwarded-uri headers  (set by Vercel edge)
-      2. event.rawPath
-      3. event.requestContext.http.path
-      4. event.requestContext.path
-      5. event.path
-    and keep the FIRST value that starts with "/" and still looks like a
-    real URL path (not the rewritten "/api/index").
-    """
-    if not isinstance(event, dict):
-        return "/"
-
-    headers = event.get("headers") or {}
-    if isinstance(headers, dict):
-        for h in (
-            "x-vercel-original-url",
-            "x-now-original-url",
-            "x-forwarded-uri",
-        ):
-            v = headers.get(h)
-            if isinstance(v, str) and v:
-                path_only = v.split("?", 1)[0]
-                if path_only.startswith("/") and path_only != "/api/index":
-                    return path_only
-
-    # rawPath / requestContext.http.path / requestContext.path / path
-    candidates: list[str] = []
-    for key in ("rawPath", "raw_path"):
-        v = event.get(key)
-        if isinstance(v, str) and v.startswith("/"):
-            candidates.append(v)
-    rc = event.get("requestContext") or {}
-    if isinstance(rc, dict):
-        http = rc.get("http") or {}
-        if isinstance(http, dict):
-            v = http.get("path")
-            if isinstance(v, str) and v.startswith("/"):
-                candidates.append(v)
-        v = rc.get("path")
-        if isinstance(v, str) and v.startswith("/"):
-            candidates.append(v)
-    v = event.get("path")
-    if isinstance(v, str) and v.startswith("/"):
-        candidates.append(v)
-
-    # Prefer the first candidate that is NOT the rewritten /api/index sentinel.
-    for c in candidates:
-        if c != "/api/index":
-            return c
-    return candidates[0] if candidates else "/"
-
-
-def _ensure_leading_slash(path: str) -> str:
-    if not path:
-        return "/"
-    if not path.startswith("/"):
-        return "/" + path
-    return path
-
-
-def _normalize_event_paths(event: Any) -> Any:
-    """
-    Returns a SHALLOW COPY of `event` with every location Mangum 0.17 /
-    Starlette might consult for the request path overwritten to the
-    recovered ORIGINAL path. Using a copy guarantees the raw event is not
-    mutated for any other consumer.
-    """
-    if not isinstance(event, dict):
-        return event
-    original = _ensure_leading_slash(_extract_original_path(event))
-
-    evt = copy.copy(event)
-    evt["rawPath"] = original
-    evt["path"] = original
-
-    rc = evt.get("requestContext")
-    if isinstance(rc, dict):
-        new_rc = copy.copy(rc)
-        http = new_rc.get("http")
-        if isinstance(http, dict):
-            new_http = copy.copy(http)
-            new_http["path"] = original
-            new_rc["http"] = new_http
-        new_rc["path"] = original
-        evt["requestContext"] = new_rc
-    return evt
-
-
-def _safe_print_event_summary(event: Any) -> None:
-    try:
-        if not isinstance(event, dict):
-            return
-        headers = event.get("headers") or {}
-        print(
-            "[VERCEL-FN-EVENT] "
-            + json.dumps(
-                {
-                    "path": event.get("path"),
-                    "rawPath": event.get("rawPath"),
-                    "rc_path": (event.get("requestContext") or {}).get("path")
-                    if isinstance(event.get("requestContext"), dict)
-                    else None,
-                    "http_path": ((event.get("requestContext") or {}).get("http") or {}).get("path")
-                    if isinstance(event.get("requestContext"), dict)
-                    and isinstance((event.get("requestContext") or {}).get("http"), dict)
-                    else None,
-                    "x-vercel-original-url": headers.get("x-vercel-original-url")
-                    if isinstance(headers, dict)
-                    else None,
-                    "host": headers.get("host") if isinstance(headers, dict) else None,
-                },
-                default=str,
-            )
-        )
-    except Exception:  # noqa: BLE001 - diagnostics must not break the request
-        pass
-
+# Public ASGI entrypoint for Vercel's Python runtime.
+#
+# Vercel only treats a file under `api/` as a Vercel Function when it defines a
+# top-level `app` (ASGI/WSGI application) or a `handler` class that subclasses
+# `BaseHTTPRequestHandler`. The legacy `def handler(event, context)` (Mangum)
+# style is no longer detected, which made the `functions` pattern in
+# vercel.json fail to match. `app` therefore stays a top-level name here.
+app = None
 
 try:
-    from mangum import Mangum
-    if app is None:
-        from app.main import app as _boot_app
-        _app_for_mangum = _boot_app
-    else:
-        _app_for_mangum = app
-    _mangum = Mangum(_app_for_mangum, lifespan="off")
+    from app.main import app as _backend_app
+except Exception as _boot_exc:  # noqa: BLE001 - surfaced by the fallback app
+    _backend_app = None
+    _boot_error = _boot_exc
+else:
+    _boot_error = None
 
-    def _handler(event: Any, context: Any) -> Any:
-        _safe_print_event_summary(event)
-        normalized = _normalize_event_paths(event)
-        resolved = _extract_original_path(normalized)
-        print(f"[VERCEL-FN-ROUTE] resolved_request_path={resolved}")
-        return _mangum(normalized, context)
 
-except Exception as _exc:  # noqa: BLE001 - startup diagnostic
-    # PEP 3110: the `as _exc` binding will be cleared at the END of this
-    # except block, so we copy the needed values into plain locals before
-    # defining any nested function that references them.
-    _exc_type_name = type(_exc).__name__
-    _exc_message = str(_exc)
+class _OriginalPathRecovery:
+    """Restore the ORIGINAL request path after Vercel rewrites mangled it.
+
+    vercel.json rewrites every /api/* request to this function at "/api" and
+    Vercel forwards the destination path as the event path. The real path the
+    client asked for arrives in the "x-vercel-original-url" header, so this
+    ASGI middleware swaps it back before FastAPI routing runs.
+    """
+
+    def __init__(self, inner_app):
+        self.inner_app = inner_app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http":
+            for key, value in scope.get("headers") or []:
+                if key == b"x-vercel-original-url":
+                    original = value.decode("latin-1", "ignore").split("?", 1)[0]
+                    if original.startswith("/") and original != "/api/index":
+                        scope["path"] = original
+                    break
+        await self.inner_app(scope, receive, send)
+
+
+if _backend_app is not None:
+    app = _backend_app
+else:
+    # Backend failed to import (e.g. missing env vars at cold start). Serve a
+    # minimal diagnostic app so the failure is visible as JSON instead of a
+    # platform 500, and so cold-start crashes do not take down the domain.
+    import json
+
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+
+    app = FastAPI(title="CleanDeliverySystem (startup fallback)")
+
+    _exc_type_name = type(_boot_error).__name__
+    _exc_message = str(_boot_error)
     _tb_text = traceback.format_exc()
-    print("[VERCEL-FN-STARTUP] Import failed:", file=sys.stderr)
-    print(_tb_text, file=sys.stderr)
 
-    def _handler(event: Any, context: Any) -> Any:
-        resolved = _extract_original_path(event) if isinstance(event, dict) else ""
-        body = {
-            "success": False,
-            "error": {
-                "code": 500,
-                "message": "Backend failed to start on Vercel",
-                "details": {
-                    "type": _exc_type_name,
-                    "error": _exc_message,
-                    "traceback": _tb_text.splitlines(),
-                    "cwd": str(Path.cwd()),
-                    "sys_path": sys.path,
-                    "path": resolved,
+    @app.exception_handler(Exception)
+    async def _fallback_unhandled(request, exc):  # noqa: ARG001
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": {
+                    "code": 500,
+                    "message": "Backend failed to start on Vercel",
+                    "details": {
+                        "type": _exc_type_name,
+                        "error": _exc_message,
+                        "traceback": _tb_text.splitlines(),
+                        "cwd": str(Path.cwd()),
+                        "sys_path": sys.path,
+                    },
                 },
             },
-        }
-        return {
-            "statusCode": 500,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
+        )
+
+    @app.get("/healthz")
+    @app.get("/api/healthz")
+    async def _fallback_health():
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "degraded",
+                "services": {"supabase": "unreachable"},
+                "error": {
+                    "type": _exc_type_name,
+                    "message": _exc_message,
+                    "traceback": _tb_text.splitlines()[-5:],
+                },
             },
-            "body": json.dumps(body, default=str),
-        }
+        )
 
-
-def handler(event: Any, context: Any) -> Any:
-    """Public entrypoint used by the Vercel Python runtime."""
-    return _handler(event, context)
+app.add_middleware(_OriginalPathRecovery)
