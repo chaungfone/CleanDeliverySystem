@@ -262,6 +262,32 @@ async def health_check() -> dict:
     env_status["SENTRY_DSN"] = _stat("SENTRY_DSN", s.SENTRY_DSN)
     env_status["REDIS_URL"] = _stat("REDIS_URL", s.REDIS_URL)
 
+    # Supabase URL sanitization check — catches [https://xxx.supabase.co) style copy/paste errors
+    url_sanity: dict = {}
+    try:
+        from app.core.database import _sanitize_and_validate_supabase_url
+        if s.SUPABASE_URL:
+            cleaned_url, warning = _sanitize_and_validate_supabase_url(s.SUPABASE_URL)
+            url_sanity["valid_format"] = warning is None
+            url_sanity["cleaned_preview"] = (
+                (f"{cleaned_url[:4]}***{cleaned_url[-6:]}") if len(cleaned_url) >= 14 else "***"
+            )
+            url_sanity["original_length"] = len(s.SUPABASE_URL)
+            url_sanity["cleaned_length"] = len(cleaned_url)
+            stripped = s.SUPABASE_URL.strip()
+            if stripped[:1] in "[({<" or stripped[-1:] in "])}>":
+                url_sanity["surrounding_chars_detected"] = True
+            if warning:
+                url_sanity["warning"] = warning
+                if health["status"] == "ok":
+                    health["status"] = "degraded"
+        else:
+            url_sanity["valid_format"] = False
+            url_sanity["warning"] = "SUPABASE_URL not set"
+    except Exception as _ue:
+        url_sanity["error"] = f"sanity check error: {_ue}"
+    health["url_sanity"] = url_sanity
+
     required_ok = (
         s.SUPABASE_URL and not s._is_placeholder(s.SUPABASE_URL) and
         s.SUPABASE_KEY and not s._is_placeholder(s.SUPABASE_KEY) and
