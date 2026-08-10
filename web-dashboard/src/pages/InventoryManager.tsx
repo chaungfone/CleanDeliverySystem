@@ -2,8 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Package, RefreshCw, Layers, Droplets, SlidersHorizontal } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
-import type { BranchInventory, InventoryData, InventoryInput } from '../lib/types';
-import { ErrorState, LoadingState, formatTime } from '../lib/ui';
+import type { BranchInventory, InventoryData, InventoryInput, Product } from '../lib/types';
+import { ErrorState, LoadingState, asArray, formatTime } from '../lib/ui';
 import Modal from '../components/Modal';
 import { useI18n } from '../i18n';
 
@@ -80,8 +80,8 @@ export default function InventoryManager() {
   }
 
   const totals = inventoryQuery.data?.totals;
-  const branches = inventoryQuery.data?.branches ?? [];
-  const products = inventoryQuery.data?.products ?? [];
+  const branches = asArray<BranchInventory>(inventoryQuery.data?.branches);
+  const products = asArray<Product>(inventoryQuery.data?.products);
 
   return (
     <div className="space-y-6 animate-fade-in">

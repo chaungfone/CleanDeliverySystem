@@ -99,3 +99,19 @@ for (const [path, title] of ROUTES) {
     await expect(h2).toHaveText(title);
   });
 }
+
+test('malformed (non-array) API data renders empty state instead of crashing', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('cd_dashboard_token', 'demo:+959123456789'));
+  await stubJson(page, '**/api/v1/auth/me', ADMIN);
+  // Orders endpoint returns an OBJECT (e.g. an error body / SPA HTML fallback)
+  // instead of an array — pages must not crash with "x.map is not a function".
+  await stubJson(page, '**/api/v1/admin/orders', { success: false, error: { message: 'boom' } });
+  await stubJson(page, '**/api/v1/admin/drivers', { foo: 'bar' });
+  await stubJson(page, '**/api/v1/admin/products', { foo: 'bar' });
+  await stubJson(page, '**/api/v1/admin/staff', { foo: 'bar' });
+
+  for (const path of ['/orders', '/products', '/staff', '/fleet']) {
+    await page.goto(`${BASE_URL}${path}`);
+    await expect(page.locator('h2').first()).toBeVisible({ timeout: 8000 });
+  }
+});

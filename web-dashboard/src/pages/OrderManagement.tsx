@@ -3,7 +3,7 @@ import { Search, Filter, CheckCircle2, Clock, Truck, Download, XCircle } from 'l
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, downloadFile } from '../lib/api';
 import type { Driver, Order } from '../lib/types';
-import { ErrorState, LoadingState, formatMoney, formatTime } from '../lib/ui';
+import { ErrorState, LoadingState, asArray, formatMoney, formatTime } from '../lib/ui';
 import { useI18n } from '../i18n';
 
 const STATUSES = ['ALL', 'PENDING', 'CONFIRMED', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'];
@@ -36,7 +36,7 @@ export default function OrderManagement() {
   });
 
   const filtered = useMemo(() => {
-    const rows = ordersQuery.data ?? [];
+    const rows = asArray<Order>(ordersQuery.data);
     return rows.filter((order) => {
       if (statusFilter !== 'ALL' && order.status !== statusFilter) return false;
       if (!search) return true;
@@ -161,12 +161,12 @@ export default function OrderManagement() {
                         <option value="" disabled>
                           {t('orders.selectDriver')}
                         </option>
-                        {(driversQuery.data ?? []).map((d) => (
+                        {(asArray<Driver>(driversQuery.data)).map((d) => (
                           <option key={d.id} value={d.id}>
                             {d.full_name}
                           </option>
                         ))}
-                        {(driversQuery.data ?? []).length === 0 && (
+                        {asArray<Driver>(driversQuery.data).length === 0 && (
                           <option value="">{t('orders.noDrivers')}</option>
                         )}
                       </select>

@@ -4,7 +4,7 @@ import { DollarSign, Package, Truck, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
 import type { Analytics, Order } from '../lib/types';
-import { ErrorState, LoadingState, formatMoney } from '../lib/ui';
+import { ErrorState, LoadingState, asArray, formatMoney } from '../lib/ui';
 import { useI18n } from '../i18n';
 
 function buildDailySeries(orders: Order[]): { name: string; revenue: number; orders: number }[] {
@@ -49,7 +49,7 @@ export default function DashboardOverview() {
     queryFn: () => apiFetch<Order[]>('/admin/orders'),
   });
 
-  const series = useMemo(() => buildDailySeries(ordersQuery.data ?? []), [ordersQuery.data]);
+  const series = useMemo(() => buildDailySeries(asArray<Order>(ordersQuery.data)), [ordersQuery.data]);
 
   if (analyticsQuery.isLoading || ordersQuery.isLoading) {
     return <LoadingState label={t('common.loading')} />;

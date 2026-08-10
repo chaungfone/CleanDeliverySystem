@@ -76,6 +76,13 @@ export function formatMoney(value: string | number): string {
   return num.toLocaleString('en-US');
 }
 
+// Guards against API responses that are not arrays (objects, HTML pages, null).
+// Pages use this so a malformed response renders an empty state instead of
+// crashing with "x.map is not a function".
+export function asArray<T>(data: T[] | null | undefined | unknown): T[] {
+  return Array.isArray(data) ? (data as T[]) : [];
+}
+
 export function formatTime(iso: string | null | undefined): string {
   if (!iso) return '—';
   const date = new Date(iso);

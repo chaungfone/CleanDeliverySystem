@@ -119,6 +119,16 @@ async function requestWithRetry<T>(
     if (contentType.includes('application/json')) {
       return (await res.json()) as T;
     }
+    if (contentType.includes('text/html')) {
+      // The host's SPA fallback served the dashboard HTML for an API route
+      // (e.g. the backend function is missing/broken on the deploy). The body
+      // is not JSON, so surface a clear error instead of returning garbage
+      // that later fails with "x.map is not a function".
+      throw new ApiError(
+        502,
+        'The API returned an HTML page instead of JSON. Check that the backend is deployed and reachable.',
+      );
+    }
     return (await res.text()) as unknown as T;
   } catch (err) {
     if (err instanceof ApiError) throw err;

@@ -3,7 +3,7 @@ import { Package, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
 import type { Product, ProductInput } from '../lib/types';
-import { ErrorState, LoadingState, formatMoney } from '../lib/ui';
+import { ErrorState, LoadingState, asArray, formatMoney } from '../lib/ui';
 import Modal from '../components/Modal';
 import { useI18n } from '../i18n';
 
@@ -126,7 +126,7 @@ export default function Products() {
     return <ErrorState error={productsQuery.error} fallback={t('errors.failedToLoad')} />;
   }
 
-  const products = productsQuery.data ?? [];
+  const products = asArray<Product>(productsQuery.data);
 
   return (
     <div className="space-y-6 animate-fade-in">

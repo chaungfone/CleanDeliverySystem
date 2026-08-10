@@ -3,7 +3,7 @@ import { MapPin, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
 import type { Branch, BranchData, BranchInput } from '../lib/types';
-import { ErrorState, LoadingState } from '../lib/ui';
+import { ErrorState, LoadingState, asArray } from '../lib/ui';
 import Modal from '../components/Modal';
 import { useI18n } from '../i18n';
 
@@ -146,7 +146,7 @@ export default function BranchManagement() {
     return <ErrorState error={branchesQuery.error} fallback={t('errors.failedToLoad')} />;
   }
 
-  const branches = branchesQuery.data?.branches ?? [];
+  const branches = asArray<Branch>(branchesQuery.data?.branches);
 
   return (
     <div className="space-y-6 animate-fade-in">

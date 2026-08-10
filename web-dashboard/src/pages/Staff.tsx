@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Phone, Shield, User } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
 import type { BranchData, StaffInput, StaffMember } from '../lib/types';
-import { ErrorState, LoadingState, formatTime } from '../lib/ui';
+import { ErrorState, LoadingState, asArray, formatTime } from '../lib/ui';
 import Modal from '../components/Modal';
 import { useI18n } from '../i18n';
 
@@ -132,8 +132,8 @@ export default function Staff() {
     return <ErrorState error={staffQuery.error} fallback={t('errors.failedToLoad')} />;
   }
 
-  const staff = staffQuery.data ?? [];
-  const branches = branchesQuery.data?.branches ?? [];
+  const staff = asArray<StaffMember>(staffQuery.data);
+  const branches = asArray<BranchData['branches'][number]>(branchesQuery.data?.branches);
   const branchName = (id: string | null) => branches.find((b) => b.id === id)?.name ?? t('common.unassigned');
 
   return (

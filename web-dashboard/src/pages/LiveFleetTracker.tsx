@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
 import type { Driver } from '../lib/types';
-import { ErrorState, LoadingState, formatTime } from '../lib/ui';
+import { ErrorState, LoadingState, asArray, formatTime } from '../lib/ui';
 import { useI18n } from '../i18n';
 
 const DEFAULT_CENTER: [number, number] = [16.8409, 96.1735];
@@ -43,7 +43,7 @@ export default function LiveFleetTracker() {
   });
 
   const drivers = useMemo(() => {
-    const list = driversQuery.data ?? [];
+    const list = asArray<Driver>(driversQuery.data);
     return list.map((driver) => ({ ...driver, coords: toCoords(driver.location) }));
   }, [driversQuery.data]);
 
