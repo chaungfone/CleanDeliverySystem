@@ -6,9 +6,9 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/api/healthz", "destination": "/api/index" },
-    { "source": "/api/v1/:path*", "destination": "/api/index" },
-    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/api/healthz", "destination": "/api" },
+    { "source": "/api/v1/:path*", "destination": "/api" },
+    { "source": "/api/:path*", "destination": "/api" },
     { "source": "/:path((?!assets$|assets/|favicon.ico$|robots.txt$|__vercel-insights).*)", "destination": "/index.html" }
   ]
 }
