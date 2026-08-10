@@ -15,6 +15,14 @@ if str(_BACKEND_DIR) not in sys.path:
 os.environ.setdefault("VERCEL", "1")
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
 
+try:
+    from app.main import app as _fastapi_app
+    app = _fastapi_app
+    application = _fastapi_app
+except Exception:  # noqa: BLE001 - will be reported by handler below
+    app = None
+    application = None
+
 
 def _extract_original_path(event: Any) -> str:
     """
@@ -145,8 +153,12 @@ def _safe_print_event_summary(event: Any) -> None:
 
 try:
     from mangum import Mangum
-    from app.main import app
-    _mangum = Mangum(app, lifespan="off")
+    if app is None:
+        from app.main import app as _boot_app
+        _app_for_mangum = _boot_app
+    else:
+        _app_for_mangum = app
+    _mangum = Mangum(_app_for_mangum, lifespan="off")
 
     def _handler(event: Any, context: Any) -> Any:
         _safe_print_event_summary(event)
@@ -156,9 +168,14 @@ try:
         return _mangum(normalized, context)
 
 except Exception as _exc:  # noqa: BLE001 - startup diagnostic
-    _tb = traceback.format_exc()
+    # PEP 3110: the `as _exc` binding will be cleared at the END of this
+    # except block, so we copy the needed values into plain locals before
+    # defining any nested function that references them.
+    _exc_type_name = type(_exc).__name__
+    _exc_message = str(_exc)
+    _tb_text = traceback.format_exc()
     print("[VERCEL-FN-STARTUP] Import failed:", file=sys.stderr)
-    print(_tb, file=sys.stderr)
+    print(_tb_text, file=sys.stderr)
 
     def _handler(event: Any, context: Any) -> Any:
         resolved = _extract_original_path(event) if isinstance(event, dict) else ""
@@ -168,9 +185,9 @@ except Exception as _exc:  # noqa: BLE001 - startup diagnostic
                 "code": 500,
                 "message": "Backend failed to start on Vercel",
                 "details": {
-                    "type": type(_exc).__name__,
-                    "error": str(_exc),
-                    "traceback": _tb.splitlines(),
+                    "type": _exc_type_name,
+                    "error": _exc_message,
+                    "traceback": _tb_text.splitlines(),
                     "cwd": str(Path.cwd()),
                     "sys_path": sys.path,
                     "path": resolved,
