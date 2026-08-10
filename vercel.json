@@ -7,7 +7,7 @@
   "trailingSlash": false,
   "functions": {
     "api/index.py": {
-      "runtime": "@vercel/python@5.2.6",
+      "runtime": "@vercel/python@5.0.10",
       "includeFiles": "backend/**,api/requirements.txt,api/runtime.txt,requirements.txt,runtime.txt"
     }
   },
