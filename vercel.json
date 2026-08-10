@@ -1,14 +1,19 @@
 {
   "version": 2,
-  "installCommand": "cd web-dashboard && npm install",
-  "buildCommand": "cd web-dashboard && npm run build",
+  "installCommand": "pwd; ls -la; (cd web-dashboard && npm install)",
+  "buildCommand": "(cd web-dashboard && npm run build) && echo '---BUILT---' && ls -la web-dashboard/dist && echo '---API FILES---' && ls -la api",
   "outputDirectory": "web-dashboard/dist",
   "cleanUrls": true,
   "trailingSlash": false,
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "backend/**,api/requirements.txt,requirements.txt,runtime.txt"
+    }
+  },
   "rewrites": [
     { "source": "/api/healthz", "destination": "/api" },
-    { "source": "/api/v1/:path*", "destination": "/api" },
-    { "source": "/api/:path*", "destination": "/api" },
-    { "source": "/:path((?!assets$|assets/|favicon.ico$|robots.txt$|__vercel-insights).*)", "destination": "/index.html" }
+    { "source": "/api/v1/:path((?!\\.).*)", "destination": "/api" },
+    { "source": "/api/:path((?!\\.).*)", "destination": "/api" },
+    { "source": "/((?!api/?|assets/?|assets/|favicon\\.ico|robots\\.txt|__vercel-insights).*)", "destination": "/index.html" }
   ]
 }
