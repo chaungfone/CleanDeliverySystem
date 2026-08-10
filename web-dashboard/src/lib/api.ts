@@ -90,6 +90,28 @@ async function requestWithRetry<T>(
       signal: controller.signal,
     });
 
+    const contentType = res.headers.get('content-type') ?? '';
+    const isHtml = contentType.includes('text/html');
+
+    if (res.status === 401 && isHtml) {
+      let rawHtml = '';
+      try { rawHtml = await res.text(); } catch { /* ignore */ }
+      const looksLikeVercelProtection =
+        rawHtml.includes('Protected deployment') ||
+        rawHtml.includes('Deployment Protection') ||
+        rawHtml.includes('Vercel');
+      if (looksLikeVercelProtection) {
+        throw new ApiError(
+          451,
+          'ဒီဝက်ဘ်ဆိုဒ်ကို Vercel Deployment Protection က ကာကွယ်ထားပါတယ်။ Dashboard အရင်ဝင်ပြီးဝေါ့ — ဝက်ဘ်လိပ်ကို နှိပ်ပြီး Browser Tab အသစ်တွင် ဝင်ရောက်ပြီး Vercel မှ ခွင့်ပြုပြီးမှ ပြန်လည်သုံးပါ။ (Go to project → Settings → Deployment Protection → Protection Bypass သို့ Password Protection ကို Disable လုပ်ပါ။)',
+        );
+      }
+      throw new ApiError(
+        401,
+        'Gateway ကနေ HTML ပြန်လာသည့်အတွက် Session မမှန်ကန်ပါ။ Browser ကနေ ပြန်ဝင်ရောက်ကြည့်ပါ။',
+      );
+    }
+
     if (res.status === 401 && !retried) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
@@ -108,6 +130,9 @@ async function requestWithRetry<T>(
         }
       } catch {
       }
+      if (isHtml && res.status === 500) {
+        detail = 'Backend function အလုပ်မလုပ်ပါ။ Vercel deploy လုပ်နေသည်ဖြစ်နိုင်ပါတယ် — ၁ မိနစ်အကြာတွင် ပြန်ကြိုးစားပါ။';
+      }
       throw new ApiError(res.status, detail);
     }
 
@@ -115,18 +140,13 @@ async function requestWithRetry<T>(
       return undefined as T;
     }
 
-    const contentType = res.headers.get('content-type') ?? '';
     if (contentType.includes('application/json')) {
       return (await res.json()) as T;
     }
     if (contentType.includes('text/html')) {
-      // The host's SPA fallback served the dashboard HTML for an API route
-      // (e.g. the backend function is missing/broken on the deploy). The body
-      // is not JSON, so surface a clear error instead of returning garbage
-      // that later fails with "x.map is not a function".
       throw new ApiError(
         502,
-        'The API returned an HTML page instead of JSON. Check that the backend is deployed and reachable.',
+        'API route ပြဿနာ — HTML ပြန်လာသည်၊ JSON မဟုတ်ပါ။ Backend function ကို deploy ပြီးဖြစ်မဖြစ် စစ်ဆေးပါ။',
       );
     }
     return (await res.text()) as unknown as T;
