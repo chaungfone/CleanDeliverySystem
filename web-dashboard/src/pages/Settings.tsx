@@ -4,7 +4,19 @@ import { useAuth } from '../lib/auth';
 import { useI18n, type Lang } from '../i18n';
 import API_BASE_URL from '../lib/api';
 
-const DOCS_URL = `${new URL(API_BASE_URL).origin}/docs`;
+// API_BASE_URL is a relative path (e.g. "/api/v1") when the dashboard and the
+// backend share an origin, so resolve the docs URL against the current origin.
+const API_ORIGIN = (() => {
+  try {
+    if (/^https?:\/\//.test(API_BASE_URL)) {
+      return new URL(API_BASE_URL).origin;
+    }
+    return window.location.origin;
+  } catch {
+    return window.location.origin;
+  }
+})();
+const DOCS_URL = `${API_ORIGIN}/docs`;
 
 export default function Settings() {
   const { user, logout } = useAuth();

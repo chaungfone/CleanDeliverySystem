@@ -122,13 +122,13 @@ export default function InventoryManager() {
                 </div>
                 <div className="flex items-center gap-4 text-sm flex-wrap">
                   <span>
-                    {t('inventory.fullColon')}: <b className="text-primary-600">{row.full_bottles.toLocaleString()}</b>
+                    {t('inventory.fullColon')}: <b className="text-primary-600">{Number(row.full_bottles ?? 0).toLocaleString()}</b>
                   </span>
                   <span>
-                    {t('inventory.emptyColon')}: <b>{row.empty_bottles.toLocaleString()}</b>
+                    {t('inventory.emptyColon')}: <b>{Number(row.empty_bottles ?? 0).toLocaleString()}</b>
                   </span>
                   <span>
-                    {t('inventory.waterColon')}: <b>{row.water_liters.toLocaleString()} L</b>
+                    {t('inventory.waterColon')}: <b>{Number(row.water_liters ?? 0).toLocaleString()} L</b>
                   </span>
                   <button
                     onClick={() => openAdjust(row)}
@@ -157,7 +157,7 @@ export default function InventoryManager() {
                     {Number(product.price).toLocaleString()} {t('common.mmk')}
                   </span>
                   <span className={product.stock_quantity === 0 ? 'text-red-600 font-bold' : 'font-semibold'}>
-                    {product.stock_quantity.toLocaleString()} {t('inventory.inStock')}
+                    {Number(product.stock_quantity ?? 0).toLocaleString()} {t('inventory.inStock')}
                   </span>
                 </div>
               </div>

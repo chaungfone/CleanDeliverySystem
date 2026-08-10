@@ -182,7 +182,7 @@ export default function OrderManagement() {
                   <td className="table-cell text-neutral-500 whitespace-nowrap">{formatTime(order.created_at)}</td>
                   <td className="table-cell text-right">
                     <span className="text-xs text-neutral-400 whitespace-nowrap">
-                      {order.items.length} {t('orders.itemsCount')}
+                      {(order.items ?? []).length} {t('orders.itemsCount')}
                     </span>
                   </td>
                 </tr>

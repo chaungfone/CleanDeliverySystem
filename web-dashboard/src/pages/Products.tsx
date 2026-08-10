@@ -190,7 +190,7 @@ export default function Products() {
                           : 'text-green-700 bg-green-50'
                       }`}
                     >
-                      {product.stock_quantity.toLocaleString()}
+                      {Number(product.stock_quantity ?? 0).toLocaleString()}
                     </span>
                   </td>
                   <td className="table-cell">

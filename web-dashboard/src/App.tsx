@@ -1,7 +1,8 @@
 import { Suspense, lazy, useState } from 'react';
-import { Navigate, BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Navigate, BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import Sidebar from './components/Sidebar';
+import ErrorBoundary from './components/ErrorBoundary';
 import { useAuth } from './lib/auth';
 import { getToken } from './lib/api';
 import { useI18n } from './i18n';
@@ -43,22 +44,26 @@ function Protected({ children }: { children: ReactNode }) {
 
 function DashboardLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const location = useLocation();
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-neutral-99">
       <Sidebar mobileOpen={drawerOpen} onOpen={() => setDrawerOpen(true)} onClose={() => setDrawerOpen(false)} />
       <main aria-label="Main content" className="lg:pl-64 p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8 max-w-[1600px]">
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/" element={<DashboardOverview />} />
-            <Route path="/orders" element={<OrderManagement />} />
-            <Route path="/fleet" element={<LiveFleetTracker />} />
-            <Route path="/inventory" element={<InventoryManager />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/branches" element={<BranchManagement />} />
-            <Route path="/staff" element={<Staff />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </Suspense>
+        <ErrorBoundary key={location.pathname} message={t('errors.pageError')} retryLabel={t('errors.tryAgain')}>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<DashboardOverview />} />
+              <Route path="/orders" element={<OrderManagement />} />
+              <Route path="/fleet" element={<LiveFleetTracker />} />
+              <Route path="/inventory" element={<InventoryManager />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/branches" element={<BranchManagement />} />
+              <Route path="/staff" element={<Staff />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </main>
     </div>
   );

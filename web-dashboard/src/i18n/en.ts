@@ -206,6 +206,8 @@ export const en = {
     server: 'Server error — please try again later.',
     failedToLoad: 'Failed to load data',
     details: 'Details',
+    pageError: 'Something went wrong while rendering this page.',
+    tryAgain: 'Try again',
   },
 };
 
