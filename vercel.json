@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.py": {
+      "runtime": "python@3.12"
+    }
+  },
   "installCommand": "cd web-dashboard && npm install",
   "buildCommand": "cd web-dashboard && npm run build",
   "outputDirectory": "web-dashboard/dist",
