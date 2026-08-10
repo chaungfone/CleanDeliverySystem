@@ -30,6 +30,9 @@ web-dashboard/.lighthouseci/
 web-dashboard/lhci_reports/
 web-dashboard/logs/
 
+# ---- Playwright test output (generated) ----
+web-dashboard/test-results/
+
 # ---- Build caches & local outputs ----
 **/.gradle/
 app/build/

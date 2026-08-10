@@ -84,45 +84,45 @@ export default function InventoryManager() {
   const products = inventoryQuery.data?.products ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-2xl font-bold">{t('inventory.title')}</h2>
-        <p className="text-neutral-500 text-sm">{t('inventory.subtitle')}</p>
+        <h2 className="text-2xl font-bold tracking-tight text-neutral-900">{t('inventory.title')}</h2>
+        <p className="text-neutral-500 text-sm mt-0.5">{t('inventory.subtitle')}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <InventoryCard title={t('inventory.fullBottles')} count={(totals?.full_bottles ?? 0).toLocaleString()} icon={Package} color="text-blue-600" />
-        <InventoryCard title={t('inventory.emptyBottles')} count={(totals?.empty_bottles ?? 0).toLocaleString()} icon={RefreshCw} color="text-orange-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <InventoryCard title={t('inventory.fullBottles')} count={(totals?.full_bottles ?? 0).toLocaleString()} icon={Package} gradient="from-primary-500 to-primary-600" />
+        <InventoryCard title={t('inventory.emptyBottles')} count={(totals?.empty_bottles ?? 0).toLocaleString()} icon={RefreshCw} gradient="from-orange-400 to-orange-500" />
         <InventoryCard
           title={t('inventory.capsLabels')}
           count={((totals?.caps_count ?? 0) + (totals?.labels_count ?? 0)).toLocaleString()}
           icon={Layers}
-          color="text-teal-600"
+          gradient="from-secondary-500 to-secondary-600"
         />
         <InventoryCard
           title={t('inventory.purifiedWater')}
           count={`${(totals?.water_liters ?? 0).toLocaleString()} L`}
           icon={Droplets}
-          color="text-cyan-600"
+          gradient="from-cyan-400 to-cyan-600"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-neutral-90 shadow-sm p-6">
-          <h3 className="font-bold mb-4">{t('inventory.stockByBranch')}</h3>
+        <div className="card p-6">
+          <h3 className="font-bold text-neutral-900 mb-4">{t('inventory.stockByBranch')}</h3>
           {branches.length === 0 && (
             <p className="text-sm text-neutral-400 py-8 text-center">{t('inventory.noRecords')}</p>
           )}
           <div className="space-y-4">
             {branches.map((row) => (
-              <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 p-3 border border-neutral-90 rounded-lg">
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 p-3.5 border border-neutral-90 rounded-xl hover:bg-neutral-99 transition-colors">
                 <div>
-                  <span className="font-medium">{row.branch_name}</span>
+                  <span className="font-semibold text-neutral-900">{row.branch_name}</span>
                   <p className="text-xs text-neutral-400">{formatTime(row.updated_at)}</p>
                 </div>
                 <div className="flex items-center gap-4 text-sm flex-wrap">
                   <span>
-                    {t('inventory.fullColon')}: <b className="text-primary">{row.full_bottles.toLocaleString()}</b>
+                    {t('inventory.fullColon')}: <b className="text-primary-600">{row.full_bottles.toLocaleString()}</b>
                   </span>
                   <span>
                     {t('inventory.emptyColon')}: <b>{row.empty_bottles.toLocaleString()}</b>
@@ -132,7 +132,7 @@ export default function InventoryManager() {
                   </span>
                   <button
                     onClick={() => openAdjust(row)}
-                    className="p-2 border border-neutral-90 rounded-lg text-neutral-500 hover:bg-neutral-99"
+                    className="p-2 border border-neutral-90 rounded-lg text-neutral-500 hover:bg-white hover:text-primary-600 hover:border-primary-200 transition-colors"
                     title={t('inventory.adjustStock')}
                   >
                     <SlidersHorizontal className="w-4 h-4" />
@@ -143,20 +143,20 @@ export default function InventoryManager() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-90 shadow-sm p-6">
-          <h3 className="font-bold mb-4">{t('inventory.productStock')}</h3>
+        <div className="card p-6">
+          <h3 className="font-bold text-neutral-900 mb-4">{t('inventory.productStock')}</h3>
           {products.length === 0 && (
             <p className="text-sm text-neutral-400 py-8 text-center">{t('inventory.noProducts')}</p>
           )}
           <div className="space-y-2">
             {products.map((product) => (
-              <div key={product.id} className="flex flex-wrap items-center justify-between gap-3 p-3 border border-neutral-90 rounded-lg">
+              <div key={product.id} className="flex flex-wrap items-center justify-between gap-3 p-3.5 border border-neutral-90 rounded-xl hover:bg-neutral-99 transition-colors">
                 <span className="font-medium">{product.name}</span>
                 <div className="flex items-center gap-6 text-sm">
                   <span className="text-neutral-500">
                     {Number(product.price).toLocaleString()} {t('common.mmk')}
                   </span>
-                  <span className={product.stock_quantity === 0 ? 'text-red-600 font-bold' : 'font-medium'}>
+                  <span className={product.stock_quantity === 0 ? 'text-red-600 font-bold' : 'font-semibold'}>
                     {product.stock_quantity.toLocaleString()} {t('inventory.inStock')}
                   </span>
                 </div>
@@ -184,7 +184,7 @@ export default function InventoryManager() {
                   step="1"
                   value={form.full_bottles}
                   onChange={(e) => setForm({ ...form, full_bottles: e.target.value })}
-                  className={inputClass}
+                  className="input"
                 />
               </Field>
               <Field label={t('inventory.emptyBottles')}>
@@ -194,7 +194,7 @@ export default function InventoryManager() {
                   step="1"
                   value={form.empty_bottles}
                   onChange={(e) => setForm({ ...form, empty_bottles: e.target.value })}
-                  className={inputClass}
+                  className="input"
                 />
               </Field>
               <Field label={t('inventory.capsCount')}>
@@ -204,7 +204,7 @@ export default function InventoryManager() {
                   step="1"
                   value={form.caps_count}
                   onChange={(e) => setForm({ ...form, caps_count: e.target.value })}
-                  className={inputClass}
+                  className="input"
                 />
               </Field>
               <Field label={t('inventory.labelsCount')}>
@@ -214,7 +214,7 @@ export default function InventoryManager() {
                   step="1"
                   value={form.labels_count}
                   onChange={(e) => setForm({ ...form, labels_count: e.target.value })}
-                  className={inputClass}
+                  className="input"
                 />
               </Field>
               <Field label={t('inventory.waterLiters')}>
@@ -224,12 +224,16 @@ export default function InventoryManager() {
                   step="0.1"
                   value={form.water_liters}
                   onChange={(e) => setForm({ ...form, water_liters: e.target.value })}
-                  className={inputClass}
+                  className="input"
                 />
               </Field>
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2" role="alert">
+                {error}
+              </p>
+            )}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
@@ -238,15 +242,11 @@ export default function InventoryManager() {
                   setAdjusting(null);
                   setForm(null);
                 }}
-                className="px-4 py-2 border border-neutral-90 rounded-lg text-neutral-500 hover:bg-neutral-99"
+                className="btn-ghost"
               >
                 {t('common.cancel')}
               </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-60"
-              >
+              <button type="submit" disabled={submitting} className="btn-primary">
                 {submitting ? t('common.saving') : t('inventory.saveStock')}
               </button>
             </div>
@@ -257,27 +257,24 @@ export default function InventoryManager() {
   );
 }
 
-function InventoryCard({ title, count, icon: Icon, color }: any) {
+function InventoryCard({ title, count, icon: Icon, gradient }: any) {
   return (
-    <div className="bg-white p-4 rounded-xl border border-neutral-90 shadow-sm flex items-center gap-4">
-      <div className={`p-3 bg-neutral-99 rounded-lg ${color}`}>
-        <Icon className="w-6 h-6" />
+    <div className="card p-5 card-hover flex items-center gap-4">
+      <div className={`p-3 rounded-xl bg-gradient-to-br ${gradient} shadow-pop shrink-0`}>
+        <Icon className="w-6 h-6 text-white" />
       </div>
-      <div>
-        <p className="text-neutral-500 text-xs font-medium uppercase">{title}</p>
-        <h4 className="text-xl font-bold">{count}</h4>
+      <div className="min-w-0">
+        <p className="text-neutral-500 text-xs font-medium uppercase tracking-wide">{title}</p>
+        <h4 className="text-xl font-bold text-neutral-900 tracking-tight">{count}</h4>
       </div>
     </div>
   );
 }
 
-const inputClass =
-  'w-full px-3 py-2 border border-neutral-90 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20';
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-neutral-600 mb-1">{label}</span>
+      <span className="field-label">{label}</span>
       {children}
     </label>
   );

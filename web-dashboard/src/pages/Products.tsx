@@ -129,82 +129,85 @@ export default function Products() {
   const products = productsQuery.data ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">{t('products.title')}</h2>
-          <p className="text-neutral-500 text-sm">{t('products.subtitle')}</p>
+          <h2 className="text-2xl font-bold tracking-tight text-neutral-900">{t('products.title')}</h2>
+          <p className="text-neutral-500 text-sm mt-0.5">{t('products.subtitle')}</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
-        >
+        <button onClick={openCreate} className="btn-primary">
           <Plus className="w-4 h-4" />
           {t('products.addProduct')}
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-neutral-90 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="table-card">
+        <div className="table-wrap">
           <table className="w-full text-left min-w-[640px]">
-            <thead className="bg-neutral-99 border-b border-neutral-90 text-sm text-neutral-500">
+            <thead className="table-head">
               <tr>
-                <th className="px-6 py-4 font-medium">{t('common.name')}</th>
-                <th className="px-6 py-4 font-medium">{t('products.price')}</th>
-                <th className="px-6 py-4 font-medium">{t('products.deposit')}</th>
-                <th className="px-6 py-4 font-medium">{t('products.stock')}</th>
-                <th className="px-6 py-4 font-medium"></th>
+                <th>{t('common.name')}</th>
+                <th>{t('products.price')}</th>
+                <th>{t('products.deposit')}</th>
+                <th>{t('products.stock')}</th>
+                <th className="text-right">{t('common.actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-90">
+            <tbody className="table-body">
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-neutral-400">
+                  <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">
                     {t('products.noProducts')}
                   </td>
                 </tr>
               )}
               {products.map((product) => (
-                <tr key={product.id} className="hover:bg-neutral-99 transition-colors">
-                  <td className="px-6 py-4">
+                <tr key={product.id} className="table-row">
+                  <td className="table-cell">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-accent rounded-lg shrink-0">
-                        <Package className="w-4 h-4 text-primary" />
+                      <div className="p-2 rounded-xl bg-primary-100 shrink-0">
+                        <Package className="w-4 h-4 text-primary-600" />
                       </div>
                       <div>
-                        <div className="font-bold">{product.name}</div>
+                        <div className="font-semibold text-neutral-900">{product.name}</div>
                         {product.description && (
                           <div className="text-xs text-neutral-400 line-clamp-1">{product.description}</div>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-medium">
+                  <td className="table-cell font-medium whitespace-nowrap">
                     {formatMoney(product.price)} {t('common.mmk')}
                   </td>
-                  <td className="px-6 py-4 text-neutral-500">
+                  <td className="table-cell text-neutral-500 whitespace-nowrap">
                     {formatMoney(product.deposit_fee)} {t('common.mmk')}
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={product.stock_quantity === 0 ? 'text-red-600 font-bold' : 'font-medium'}>
+                  <td className="table-cell">
+                    <span
+                      className={`badge ${
+                        product.stock_quantity === 0
+                          ? 'text-red-700 bg-red-50'
+                          : 'text-green-700 bg-green-50'
+                      }`}
+                    >
                       {product.stock_quantity.toLocaleString()}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="table-cell">
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => openEdit(product)}
-                        className="p-2 hover:bg-neutral-90 rounded-lg"
+                        className="p-2 rounded-lg text-neutral-500 hover:bg-primary-50 hover:text-primary-600 transition-colors"
                         title={t('common.edit')}
                       >
-                        <Pencil className="w-4 h-4 text-neutral-500" />
+                        <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(product)}
-                        className="p-2 hover:bg-red-50 rounded-lg"
+                        className="p-2 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                         title={t('common.delete')}
                       >
-                        <Trash2 className="w-4 h-4 text-red-400" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -227,7 +230,7 @@ export default function Products() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
-              className={inputClass}
+              className="input"
               placeholder={t('products.namePlaceholder')}
             />
           </Field>
@@ -235,7 +238,7 @@ export default function Products() {
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className={inputClass}
+              className="textarea"
               rows={2}
               placeholder={t('products.descPlaceholder')}
             />
@@ -249,7 +252,7 @@ export default function Products() {
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
                 required
-                className={inputClass}
+                className="input"
                 placeholder="0"
               />
             </Field>
@@ -260,7 +263,7 @@ export default function Products() {
                 step="0.01"
                 value={form.deposit_fee}
                 onChange={(e) => setForm({ ...form, deposit_fee: e.target.value })}
-                className={inputClass}
+                className="input"
                 placeholder="0"
               />
             </Field>
@@ -272,26 +275,22 @@ export default function Products() {
               step="1"
               value={form.stock_quantity}
               onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })}
-              className={inputClass}
+              className="input"
               placeholder="0"
             />
           </Field>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2" role="alert">
+              {error}
+            </p>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setModalOpen(false)}
-              className="px-4 py-2 border border-neutral-90 rounded-lg text-neutral-500 hover:bg-neutral-99"
-            >
+            <button type="button" onClick={() => setModalOpen(false)} className="btn-ghost">
               {t('common.cancel')}
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-60"
-            >
+            <button type="submit" disabled={submitting} className="btn-primary">
               {submitting ? t('common.saving') : form.id ? t('products.saveChanges') : t('products.createProduct')}
             </button>
           </div>
@@ -301,13 +300,10 @@ export default function Products() {
   );
 }
 
-const inputClass =
-  'w-full px-3 py-2 border border-neutral-90 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20';
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-neutral-600 mb-1">{label}</span>
+      <span className="field-label">{label}</span>
       {children}
     </label>
   );

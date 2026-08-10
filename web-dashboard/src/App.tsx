@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import { useAuth } from './lib/auth';
 import { getToken } from './lib/api';
 import { useI18n } from './i18n';
+import { Loader2 } from 'lucide-react';
 
 // Route-level code splitting: each page becomes its own lazy chunk so the
 // initial bundle stays small and heavy deps (e.g. victory charts) load on demand.
@@ -21,8 +22,9 @@ const Login = lazy(() => import('./pages/Login'));
 function PageLoader() {
   const { t } = useI18n();
   return (
-    <div className="min-h-screen bg-neutral-99 flex items-center justify-center text-neutral-400">
-      {t('common.loading')}
+    <div className="min-h-screen bg-neutral-99 flex flex-col items-center justify-center text-neutral-400 animate-fade-in" role="status">
+      <Loader2 className="w-8 h-8 text-primary-500 animate-spin mb-3" />
+      <span className="text-sm font-medium">{t('common.loading')}</span>
     </div>
   );
 }
@@ -31,11 +33,7 @@ function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const { t } = useI18n();
   if (loading) {
-    return (
-      <div className="min-h-screen bg-neutral-99 flex items-center justify-center text-neutral-400">
-        {t('common.loading')}
-      </div>
-    );
+    return <PageLoader />;
   }
   if (!user || !getToken()) {
     return <Navigate to="/login" replace />;
@@ -47,8 +45,8 @@ function DashboardLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   return (
     <div className="min-h-screen bg-neutral-99">
-      <Sidebar mobileOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <main aria-label="Main content" className="lg:pl-64 p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
+      <Sidebar mobileOpen={drawerOpen} onOpen={() => setDrawerOpen(true)} onClose={() => setDrawerOpen(false)} />
+      <main aria-label="Main content" className="lg:pl-64 p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8 max-w-[1600px]">
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<DashboardOverview />} />

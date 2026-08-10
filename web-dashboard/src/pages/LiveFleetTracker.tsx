@@ -57,23 +57,23 @@ export default function LiveFleetTracker() {
   const inTransit = drivers.filter((d) => d.last_ping).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">{t('fleet.title')}</h2>
-          <p className="text-neutral-500 text-sm">{t('fleet.subtitle')}</p>
+          <h2 className="text-2xl font-bold tracking-tight text-neutral-900">{t('fleet.title')}</h2>
+          <p className="text-neutral-500 text-sm mt-0.5">{t('fleet.subtitle')}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <StatusCount label={t('fleet.drivers')} count={drivers.length} color="bg-green-500" />
-          <StatusCount label={t('fleet.withLocation')} count={withLocation.length} color="bg-primary" />
+          <StatusCount label={t('fleet.withLocation')} count={withLocation.length} color="bg-primary-500" />
           <StatusCount label={t('fleet.lastPing')} count={inTransit} color="bg-orange-400" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <div className="xl:col-span-3 bg-neutral-90 rounded-2xl overflow-hidden relative border border-neutral-90 shadow-inner min-h-[400px]">
+        <div className="xl:col-span-3 rounded-2xl overflow-hidden relative border border-neutral-90 shadow-card min-h-[420px] bg-neutral-90">
           {withLocation.length > 0 ? (
-            <MapContainer center={withLocation[0].coords ?? DEFAULT_CENTER} zoom={12} className="w-full h-full min-h-[400px]">
+            <MapContainer center={withLocation[0].coords ?? DEFAULT_CENTER} zoom={12} className="w-full h-full min-h-[420px]">
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -99,13 +99,13 @@ export default function LiveFleetTracker() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-neutral-90 shadow-sm flex flex-col">
+        <div className="card flex flex-col">
           <div className="p-4 border-b border-neutral-90">
-            <h3 className="font-bold">
+            <h3 className="font-bold text-neutral-900">
               {t('fleet.driversCount')} ({drivers.length})
             </h3>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[400px] xl:max-h-none">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[420px] xl:max-h-none">
             {drivers.length === 0 && (
               <p className="text-sm text-neutral-400 text-center py-8">{t('fleet.noDrivers')}</p>
             )}
@@ -127,8 +127,8 @@ export default function LiveFleetTracker() {
 
 function StatusCount({ label, count, color }: any) {
   return (
-    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-neutral-90 shadow-sm">
-      <div className={`w-2 h-2 rounded-full ${color}`} />
+    <div className="flex items-center gap-2 card px-3 py-1.5">
+      <span className={`w-2 h-2 rounded-full ${color}`} />
       <span className="text-sm font-bold text-neutral-600">{count}</span>
       <span className="text-xs text-neutral-400 font-medium">{label}</span>
     </div>
@@ -137,12 +137,12 @@ function StatusCount({ label, count, color }: any) {
 
 function DriverTrackerCard({ name, status, isActive, lastPing }: any) {
   return (
-    <div className="p-3 rounded-xl border border-neutral-99 bg-neutral-99 hover:border-accent hover:bg-accent/10 transition-all cursor-pointer group">
+    <div className="p-3 rounded-xl border border-neutral-90 bg-neutral-99 hover:border-primary-200 hover:bg-primary-50/60 transition-all cursor-pointer group">
       <div className="flex items-center justify-between mb-2">
         <span className="font-bold text-sm text-neutral-800">{name}</span>
         <span
-          className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
-            isActive ? 'bg-primary/10 text-primary' : 'bg-neutral-90 text-neutral-500'
+          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+            isActive ? 'bg-primary-100 text-primary-700' : 'bg-neutral-90 text-neutral-500'
           }`}
         >
           {status}

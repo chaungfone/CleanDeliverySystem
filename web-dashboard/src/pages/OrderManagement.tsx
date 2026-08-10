@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, Filter, CheckCircle2, Clock, Truck, Download } from 'lucide-react';
+import { Search, Filter, CheckCircle2, Clock, Truck, Download, XCircle } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, downloadFile } from '../lib/api';
 import type { Driver, Order } from '../lib/types';
@@ -63,38 +63,37 @@ export default function OrderManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">{t('orders.title')}</h2>
-          <p className="text-neutral-500 text-sm">{t('orders.subtitle')}</p>
+          <h2 className="text-2xl font-bold tracking-tight text-neutral-900">{t('orders.title')}</h2>
+          <p className="text-neutral-500 text-sm mt-0.5">{t('orders.subtitle')}</p>
         </div>
-        <button
-          onClick={handleExport}
-          className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
-        >
+        <button onClick={handleExport} className="btn-primary">
           <Download className="w-4 h-4" />
           {t('orders.exportCsv')}
         </button>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white p-4 rounded-xl border border-neutral-90 shadow-sm">
+      <div className="card p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
         <div className="relative flex-1">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+          <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('orders.searchPlaceholder')}
-            className="w-full pl-10 pr-4 py-2 border border-neutral-90 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="input input-with-icon"
+            aria-label={t('common.search')}
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-neutral-500" />
+          <Filter className="w-5 h-5 text-neutral-400" aria-hidden />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-neutral-90 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="select w-auto"
+            aria-label={t('common.filter')}
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -105,49 +104,49 @@ export default function OrderManagement() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-neutral-90 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[720px]">
-            <thead className="bg-neutral-99 border-b border-neutral-90 text-sm text-neutral-500">
+      <div className="table-card">
+        <div className="table-wrap">
+          <table className="w-full text-left min-w-[760px]">
+            <thead className="table-head">
               <tr>
-                <th className="px-6 py-4 font-medium">{t('orders.orderId')}</th>
-                <th className="px-6 py-4 font-medium">{t('orders.customer')}</th>
-                <th className="px-6 py-4 font-medium">{t('orders.status')}</th>
-                <th className="px-6 py-4 font-medium">{t('orders.driver')}</th>
-                <th className="px-6 py-4 font-medium">{t('orders.amount')}</th>
-                <th className="px-6 py-4 font-medium">{t('orders.time')}</th>
-                <th className="px-6 py-4 font-medium"></th>
+                <th>{t('orders.orderId')}</th>
+                <th>{t('orders.customer')}</th>
+                <th>{t('orders.status')}</th>
+                <th>{t('orders.driver')}</th>
+                <th>{t('orders.amount')}</th>
+                <th>{t('orders.time')}</th>
+                <th className="text-right">{t('common.actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-90">
+            <tbody className="table-body">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-neutral-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-neutral-400">
                     {t('orders.noOrders')}
                   </td>
                 </tr>
               )}
               {filtered.map((order) => (
-                <tr key={order.id} className="hover:bg-neutral-99 transition-colors">
-                  <td className="px-6 py-4 font-bold text-primary text-xs">{order.id}</td>
-                  <td className="px-6 py-4 font-medium">
+                <tr key={order.id} className="table-row">
+                  <td className="table-cell font-bold text-primary-600 text-xs whitespace-nowrap">{order.id}</td>
+                  <td className="table-cell font-medium">
                     <div>{order.customer_name ?? '—'}</div>
                     {order.customer_phone && <div className="text-xs text-neutral-400">{order.customer_phone}</div>}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="table-cell">
                     <StatusBadge status={order.status} />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="table-cell">
                     {order.status === 'PENDING' && !assigning ? (
                       <button
                         onClick={() => setAssigning(order.id)}
-                        className="text-xs font-medium text-primary border border-primary/30 px-2 py-1 rounded-md hover:bg-accent"
+                        className="text-xs font-semibold text-primary-600 border border-primary-200 px-2.5 py-1 rounded-lg hover:bg-primary-50 transition-colors"
                       >
                         {t('orders.assignDriver')}
                       </button>
                     ) : assigning === order.id ? (
                       <select
-                        className="text-xs px-2 py-1 border border-neutral-90 rounded-md bg-white"
+                        className="select w-auto text-xs py-1.5"
                         value=""
                         onChange={async (e) => {
                           const driverId = e.target.value;
@@ -177,12 +176,12 @@ export default function OrderManagement() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 font-medium">
+                  <td className="table-cell font-semibold whitespace-nowrap">
                     {formatMoney(order.total_amount)} {t('common.mmk')}
                   </td>
-                  <td className="px-6 py-4 text-neutral-500">{formatTime(order.created_at)}</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-xs text-neutral-300">
+                  <td className="table-cell text-neutral-500 whitespace-nowrap">{formatTime(order.created_at)}</td>
+                  <td className="table-cell text-right">
+                    <span className="text-xs text-neutral-400 whitespace-nowrap">
                       {order.items.length} {t('orders.itemsCount')}
                     </span>
                   </td>
@@ -198,19 +197,19 @@ export default function OrderManagement() {
 
 function StatusBadge({ status }: { status: string }) {
   const configs: any = {
-    PENDING: { color: 'text-orange-700 bg-orange-50', icon: Clock },
-    CONFIRMED: { color: 'text-yellow-700 bg-yellow-50', icon: Clock },
-    ASSIGNED: { color: 'text-blue-700 bg-blue-50', icon: Truck },
-    IN_TRANSIT: { color: 'text-blue-700 bg-accent', icon: Truck },
-    DELIVERED: { color: 'text-green-700 bg-green-50', icon: CheckCircle2 },
-    CANCELLED: { color: 'text-red-700 bg-red-50', icon: CheckCircle2 },
+    PENDING: { color: 'text-orange-700 bg-orange-50', dot: 'bg-orange-500', icon: Clock },
+    CONFIRMED: { color: 'text-yellow-700 bg-yellow-50', dot: 'bg-yellow-500', icon: Clock },
+    ASSIGNED: { color: 'text-blue-700 bg-blue-50', dot: 'bg-blue-500', icon: Truck },
+    IN_TRANSIT: { color: 'text-primary-700 bg-primary-100', dot: 'bg-primary-500', icon: Truck },
+    DELIVERED: { color: 'text-green-700 bg-green-50', dot: 'bg-green-500', icon: CheckCircle2 },
+    CANCELLED: { color: 'text-red-700 bg-red-50', dot: 'bg-red-500', icon: XCircle },
   };
-  const config = configs[status] ?? { color: 'text-neutral-700 bg-neutral-90', icon: Clock };
+  const config = configs[status] ?? { color: 'text-neutral-700 bg-neutral-90', dot: 'bg-neutral-400', icon: Clock };
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${config.color}`}>
-      <Icon className="w-3.5 h-3.5" />
+    <span className={`badge ${config.color}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
       {status}
     </span>
   );

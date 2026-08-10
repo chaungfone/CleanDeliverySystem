@@ -29,6 +29,15 @@ function buildDailySeries(orders: Order[]): { name: string; revenue: number; ord
   return days;
 }
 
+const CHART_TOOLTIP = {
+  contentStyle: {
+    borderRadius: 12,
+    border: '1px solid #E4E8EF',
+    boxShadow: '0 10px 24px -6px rgba(16,24,40,0.12)',
+    fontSize: 13,
+  },
+};
+
 export default function DashboardOverview() {
   const { t } = useI18n();
   const analyticsQuery = useQuery({
@@ -57,65 +66,83 @@ export default function DashboardOverview() {
   const analytics = analyticsQuery.data;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <div>
-        <h2 className="text-2xl font-bold">{t('dashboard.title')}</h2>
-        <p className="text-neutral-500 text-sm">{t('dashboard.subtitle')}</p>
+        <h2 className="text-2xl font-bold tracking-tight text-neutral-900">{t('dashboard.title')}</h2>
+        <p className="text-neutral-500 text-sm mt-0.5">{t('dashboard.subtitle')}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatCard
           title={t('dashboard.revenue')}
           value={`${formatMoney(analytics?.total_revenue ?? '0')} MMK`}
           icon={DollarSign}
           trend={`${analytics?.delivered_volume ?? 0} ${t('dashboard.deliveredCount')}`}
+          gradient="from-primary-500 to-primary-600"
         />
         <StatCard
           title={t('dashboard.bottlesDelivered')}
           value={String(analytics?.delivered_volume ?? 0)}
           icon={Package}
           subValue={`${t('dashboard.period')}: ${analytics?.period ?? 'daily'}`}
+          gradient="from-secondary-500 to-secondary-600"
         />
         <StatCard
           title={t('dashboard.activeDrivers')}
           value={String(analytics?.active_drivers ?? 0)}
           icon={Truck}
           subValue={t('dashboard.reportingLocation')}
+          gradient="from-amber-400 to-orange-500"
         />
         <StatCard
           title={t('dashboard.pendingDeliveries')}
           value={String(analytics?.pending_deliveries ?? 0)}
           icon={Clock}
           subValue={t('dashboard.awaitingDelivery')}
+          gradient="from-slate-400 to-slate-600"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-xl border border-neutral-90 shadow-sm">
-          <h3 className="text-lg font-bold mb-6">{t('dashboard.salesTrend')}</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h3 className="text-lg font-bold text-neutral-900 mb-6">{t('dashboard.salesTrend')}</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Area type="monotone" dataKey="revenue" stroke="#2196F3" fill="#E3F2FD" name={t('dashboard.revenueLabel')} />
+                <defs>
+                  <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#1976D2" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="#1976D2" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E8EF" />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#4B5563' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} axisLine={false} tickLine={false} width={60} />
+                <Tooltip {...CHART_TOOLTIP} />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#1976D2"
+                  strokeWidth={2.5}
+                  fill="url(#revenueFill)"
+                  name={t('dashboard.revenueLabel')}
+                  activeDot={{ r: 5 }}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-neutral-90 shadow-sm">
-          <h3 className="text-lg font-bold mb-6">{t('dashboard.ordersPerDay')}</h3>
+        <div className="card p-6">
+          <h3 className="text-lg font-bold text-neutral-900 mb-6">{t('dashboard.ordersPerDay')}</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={series}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="orders" fill="#009688" radius={[4, 4, 0, 0]} name={t('dashboard.ordersLabel')} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E8EF" />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#4B5563' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} axisLine={false} tickLine={false} width={60} />
+                <Tooltip {...CHART_TOOLTIP} cursor={{ fill: 'rgba(25,118,210,0.06)' }} />
+                <Bar dataKey="orders" fill="#009688" radius={[6, 6, 0, 0]} maxBarSize={42} name={t('dashboard.ordersLabel')} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -125,12 +152,12 @@ export default function DashboardOverview() {
   );
 }
 
-function StatCard({ title, value, icon: Icon, trend, subValue }: any) {
+function StatCard({ title, value, icon: Icon, trend, subValue, gradient }: any) {
   return (
-    <div className="bg-white p-6 rounded-xl border border-neutral-90 shadow-sm">
+    <div className="card p-5 card-hover">
       <div className="flex items-center justify-between mb-4">
-        <div className="p-2 bg-accent rounded-lg">
-          <Icon className="w-6 h-6 text-primary" />
+        <div className={`p-2.5 rounded-xl bg-gradient-to-br ${gradient} shadow-pop`}>
+          <Icon className="w-6 h-6 text-white" />
         </div>
         {trend && (
           <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 rounded-full">
@@ -139,7 +166,7 @@ function StatCard({ title, value, icon: Icon, trend, subValue }: any) {
         )}
       </div>
       <p className="text-neutral-500 text-sm font-medium">{title}</p>
-      <h4 className="text-2xl font-bold mt-1">{value}</h4>
+      <h4 className="text-2xl font-bold mt-1 text-neutral-900 tracking-tight">{value}</h4>
       {subValue && <p className="text-xs text-neutral-400 mt-1">{subValue}</p>}
     </div>
   );

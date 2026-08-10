@@ -149,55 +149,64 @@ export default function BranchManagement() {
   const branches = branchesQuery.data?.branches ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">{t('branches.title')}</h2>
-          <p className="text-neutral-500 text-sm">{t('branches.subtitle')}</p>
+          <h2 className="text-2xl font-bold tracking-tight text-neutral-900">{t('branches.title')}</h2>
+          <p className="text-neutral-500 text-sm mt-0.5">{t('branches.subtitle')}</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
-        >
+        <button onClick={openCreate} className="btn-primary">
           <Plus className="w-4 h-4" />
           {t('branches.addBranch')}
         </button>
       </div>
 
-      <div className="bg-white p-6 rounded-xl border border-neutral-90 shadow-sm">
-        <h3 className="font-bold flex items-center gap-2 mb-6">
-          <MapPin className="w-5 h-5 text-primary" />
+      <div className="card p-6">
+        <h3 className="font-bold flex items-center gap-2 mb-6 text-neutral-900">
+          <span className="p-1.5 rounded-lg bg-primary-100">
+            <MapPin className="w-4 h-4 text-primary-600" />
+          </span>
           {t('branches.branchesCount')} ({branches.length})
         </h3>
         {branches.length === 0 && (
           <p className="text-sm text-neutral-400 py-8 text-center">{t('branches.noBranches')}</p>
         )}
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {branches.map((branch) => (
             <div
               key={branch.id}
-              className="flex flex-wrap items-center justify-between gap-3 p-4 bg-neutral-99 rounded-xl border border-neutral-90"
+              className="flex flex-wrap items-center justify-between gap-3 p-4 bg-neutral-99 rounded-xl border border-neutral-90 hover:border-primary-200 hover:bg-white transition-colors"
             >
               <div>
-                <h4 className="font-bold">{branch.name}</h4>
-                <p className="text-xs text-neutral-500">{branch.address}</p>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-neutral-900">{branch.name}</h4>
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      branch.is_active ? 'text-green-700 bg-green-50' : 'text-neutral-700 bg-neutral-90'
+                    }`}
+                  >
+                    {branch.is_active ? t('common.active') : t('common.inactive')}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-500 mt-1">{branch.address}</p>
                 <p className="text-xs text-neutral-400 mt-0.5">
                   {branch.staff.length} {t('branches.staffCount')}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-xs font-bold px-2 py-1 rounded-md ${
-                    branch.is_active ? 'text-green-700 bg-green-50' : 'text-neutral-700 bg-neutral-90'
-                  }`}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => openEdit(branch)}
+                  className="p-2 rounded-lg text-neutral-500 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                  title={t('common.edit')}
                 >
-                  {branch.is_active ? t('common.active') : t('common.inactive')}
-                </span>
-                <button onClick={() => openEdit(branch)} className="p-2 hover:bg-neutral-90 rounded-lg" title={t('common.edit')}>
-                  <Pencil className="w-4 h-4 text-neutral-500" />
+                  <Pencil className="w-4 h-4" />
                 </button>
-                <button onClick={() => handleDelete(branch)} className="p-2 hover:bg-red-50 rounded-lg" title={t('common.delete')}>
-                  <Trash2 className="w-4 h-4 text-red-400" />
+                <button
+                  onClick={() => handleDelete(branch)}
+                  className="p-2 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  title={t('common.delete')}
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -217,7 +226,7 @@ export default function BranchManagement() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
-              className={inputClass}
+              className="input"
               placeholder="e.g. Yangon Main"
             />
           </Field>
@@ -227,7 +236,7 @@ export default function BranchManagement() {
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               required
-              className={inputClass}
+              className="input"
               placeholder="e.g. Downtown, Yangon"
             />
           </Field>
@@ -240,7 +249,7 @@ export default function BranchManagement() {
                 max="90"
                 value={form.latitude}
                 onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-                className={inputClass}
+                className="input"
                 placeholder={form.id ? t('branches.keepCurrent') : 'e.g. 16.8409'}
               />
             </Field>
@@ -252,37 +261,33 @@ export default function BranchManagement() {
                 max="180"
                 value={form.longitude}
                 onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-                className={inputClass}
+                className="input"
                 placeholder={form.id ? t('branches.keepCurrent') : 'e.g. 96.1735'}
               />
             </Field>
           </div>
           {form.id && <p className="text-xs text-neutral-400">{t('branches.coordsHint')}</p>}
-          <label className="flex items-center gap-2 text-sm font-medium text-neutral-600">
+          <label className="flex items-center gap-2.5 text-sm font-medium text-neutral-600">
             <input
               type="checkbox"
               checked={form.is_active}
               onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-              className="w-4 h-4 accent-primary"
+              className="w-4 h-4 rounded accent-primary"
             />
             {t('branches.isActive')}
           </label>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2" role="alert">
+              {error}
+            </p>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setModalOpen(false)}
-              className="px-4 py-2 border border-neutral-90 rounded-lg text-neutral-500 hover:bg-neutral-99"
-            >
+            <button type="button" onClick={() => setModalOpen(false)} className="btn-ghost">
               {t('common.cancel')}
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-60"
-            >
+            <button type="submit" disabled={submitting} className="btn-primary">
               {submitting ? t('common.saving') : form.id ? t('common.saveChanges') : t('branches.createBranch')}
             </button>
           </div>
@@ -292,13 +297,10 @@ export default function BranchManagement() {
   );
 }
 
-const inputClass =
-  'w-full px-3 py-2 border border-neutral-90 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20';
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-neutral-600 mb-1">{label}</span>
+      <span className="field-label">{label}</span>
       {children}
     </label>
   );

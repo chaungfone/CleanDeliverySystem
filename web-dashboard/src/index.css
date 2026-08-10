@@ -2,24 +2,132 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-sans: 'Noto Sans Myanmar', 'Pyidaungsu', system-ui, sans-serif;
-}
-
-html {
-  -webkit-text-size-adjust: 100%;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-font-smoothing: antialiased;
-}
-
-body {
-  font-family: var(--font-sans);
-  line-height: 1.6;
-}
-
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
+  }
+
   body {
-    @apply bg-neutral-99 text-neutral-10;
+    @apply bg-neutral-99 text-neutral-10 antialiased;
+    font-family: theme('fontFamily.sans');
+    font-feature-settings: 'cv02', 'cv03', 'cv04';
+  }
+
+  ::selection {
+    @apply bg-primary-100 text-primary-900;
+  }
+
+  /* Visible, keyboard-friendly focus ring that matches the brand. */
+  :focus-visible {
+    outline: 2px solid theme('colors.primary.500');
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Slim, subtle scrollbars for the dashboard canvas. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.neutral.90') transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: theme('colors.neutral.90');
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* ---- Cards -------------------------------------------------------- */
+  .card {
+    @apply bg-white rounded-2xl border border-neutral-90 shadow-card;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+
+  /* ---- Buttons ------------------------------------------------------ */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-medium
+      px-4 py-2.5 text-sm transition-all duration-150
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1
+      disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98];
+  }
+  .btn-primary {
+    @apply btn bg-primary text-white shadow-sm hover:bg-primary-600
+      focus-visible:ring-primary-400;
+  }
+  .btn-secondary {
+    @apply btn bg-secondary text-white shadow-sm hover:bg-secondary-600
+      focus-visible:ring-secondary-400;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-neutral-600 border border-neutral-90
+      hover:bg-neutral-99 hover:text-neutral-900 focus-visible:ring-primary-400;
+  }
+  .btn-danger {
+    @apply btn bg-red-50 text-red-700 border border-red-100
+      hover:bg-red-100 focus-visible:ring-red-300;
+  }
+
+  /* ---- Form controls ------------------------------------------------ */
+  .input,
+  .select,
+  .textarea {
+    @apply w-full rounded-xl border border-neutral-90 bg-white
+      px-3.5 py-2.5 text-sm text-neutral-10 placeholder:text-neutral-400
+      transition-colors duration-150
+      focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100;
+  }
+  .select {
+    @apply appearance-none pr-9 bg-no-repeat;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234B5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+  }
+  .input-with-icon {
+    @apply pl-10;
+  }
+  .field-label {
+    @apply block text-sm font-medium text-neutral-600 mb-1.5;
+  }
+
+  /* ---- Badges ------------------------------------------------------- */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold;
+  }
+
+  /* ---- Tables ------------------------------------------------------- */
+  .table-card {
+    @apply card overflow-hidden;
+  }
+  .table-wrap {
+    @apply overflow-x-auto;
+  }
+  .table-head {
+    @apply bg-neutral-99 border-b border-neutral-90 text-sm text-neutral-500;
+  }
+  .table-head th {
+    @apply px-6 py-4 font-semibold whitespace-nowrap;
+  }
+  .table-body {
+    @apply divide-y divide-neutral-90;
+  }
+  .table-row {
+    @apply hover:bg-primary-50/60 transition-colors;
+  }
+  .table-cell {
+    @apply px-6 py-4 align-middle;
   }
 }
 
@@ -31,9 +139,20 @@ body {
 }
 
 /* Accessible input placeholders: default browser gray is too light on white
-   (≈3.2:1). gray-600 (#52606d) on white is ≈7.7:1, meeting WCAG AA/AAA. */
+   (≈3.2:1). gray-600 (#4B5563) on white is ≈7.7:1, meeting WCAG AA/AAA. */
 input::placeholder,
 textarea::placeholder {
-  color: #52606d !important; /* gray-600 */
+  color: #4b5563 !important;
   opacity: 1;
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

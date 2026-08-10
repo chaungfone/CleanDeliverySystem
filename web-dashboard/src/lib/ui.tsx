@@ -1,11 +1,12 @@
-import { AlertCircle, WifiOff, ShieldAlert, ServerCrash, SearchX, Clock } from 'lucide-react';
+import { AlertCircle, WifiOff, ShieldAlert, ServerCrash, SearchX, Clock, Loader2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { ApiError } from './api';
 
 export function LoadingState({ label }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center py-20 text-neutral-400 animate-pulse">
-      {label}
+    <div className="flex flex-col items-center justify-center py-24 text-neutral-400 animate-fade-in" role="status">
+      <Loader2 className="w-8 h-8 text-primary-500 animate-spin mb-3" />
+      {label && <p className="text-sm font-medium">{label}</p>}
     </div>
   );
 }
@@ -53,11 +54,11 @@ export function ErrorState({ error, fallback = '', message }: ErrorStateProps) {
       : { icon: AlertCircle, message: message ?? fallback };
   const Icon = resolved.icon;
   return (
-    <div className="flex items-center justify-center py-20 px-4">
-      <div className="flex items-start gap-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3 max-w-lg">
+    <div className="flex items-center justify-center py-20 px-4 animate-fade-in">
+      <div className="flex items-start gap-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3 max-w-lg shadow-sm">
         <Icon className="w-5 h-5 shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium">{resolved.message}</p>
+          <p className="font-semibold">{resolved.message}</p>
           {resolved.detail && (
             <p className="text-xs text-red-400 mt-1 break-words">
               {t('errors.details')}: {resolved.detail}
