@@ -175,6 +175,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 # Advanced Health Check
 @app.get("/healthz", tags=["health"])
+@app.get("/api/healthz", tags=["health"])
 async def health_check() -> dict:
     health = {"status": "ok", "timestamp": time.time(), "services": {}}
 
