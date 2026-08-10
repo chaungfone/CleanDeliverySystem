@@ -179,6 +179,15 @@ class OtpVerify(BaseModel):
 
 
 def _issue_tokens(user_id: str, role: str) -> dict[str, str]:
+    if not settings.SUPABASE_JWT_SECRET:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Server is not configured: SUPABASE_JWT_SECRET is missing from "
+                "environment variables. Add it in Vercel Project Settings -> "
+                "Environment Variables and redeploy."
+            ),
+        )
     now = int(time.time())
     base = {
         "sub": user_id,

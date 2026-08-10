@@ -36,9 +36,14 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS_JSON",
     )
 
-    SUPABASE_URL: str
-    SUPABASE_KEY: str
-    SUPABASE_JWT_SECRET: str
+    # Graceful defaults: allow the FastAPI app to import/start even when secrets
+    # aren't present in the runtime environment (e.g. initial Vercel deploy
+    # before env vars are configured). The specific endpoints that need these
+    # values will fail explicitly with clear messages instead of the whole
+    # server crashing at module-import time.
+    SUPABASE_URL: str | None = None
+    SUPABASE_KEY: str | None = None
+    SUPABASE_JWT_SECRET: str | None = None
 
     SENTRY_DSN: str | None = None
 
@@ -79,7 +84,11 @@ class Settings(BaseSettings):
             "SUPABASE_KEY": self.SUPABASE_KEY,
             "SUPABASE_JWT_SECRET": self.SUPABASE_JWT_SECRET,
         }
-        placeholders = [name for name, val in secrets_to_check.items() if self._is_placeholder(val)]
+        # Skip validation when secrets are not yet provided; endpoints using
+        # them will return explicit, actionable errors later.
+        if not all(secrets_to_check.values()):
+            return
+        placeholders = [name for name, val in secrets_to_check.items() if self._is_placeholder(val or "")]
         if placeholders:
             raise RuntimeError(
                 "Placeholder/dummy secrets detected in environment "

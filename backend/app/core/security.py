@@ -19,6 +19,15 @@ _bearer = HTTPBearer(auto_error=False)
 
 
 def _decode_token(token: str) -> dict:
+    if not settings.SUPABASE_JWT_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=(
+                "Server is not configured: SUPABASE_JWT_SECRET is missing from "
+                "environment variables. Add it in Vercel Project Settings -> "
+                "Environment Variables and redeploy."
+            ),
+        )
     try:
         return jwt.decode(
             token,
@@ -26,9 +35,7 @@ def _decode_token(token: str) -> dict:
             algorithms=[settings.jwt_algorithm],
             audience="authenticated",
             options={
-                # Reject tokens missing these claims outright (no silent "no exp" pass).
                 "require": ["exp", "iat", "aud"],
-                # Reject alg confusion (e.g. attacker switching to "none"/HS).
                 "verify_signature": True,
                 "verify_exp": True,
                 "verify_iat": True,
