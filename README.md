@@ -1,5 +1,21 @@
 # Clean Delivery System - Production Deployment Guide
 
+## 0. Mobile App (Flutter)
+
+The mobile application is a **Flutter** rewrite of the previous Kotlin
+(Android) app and lives in [`mobile/`](mobile/README.md).
+
+- **Customer app:** phone + OTP login, water product catalogue, cart,
+  checkout, order tracking.
+- **Driver app:** online/offline toggle, assigned deliveries, status updates,
+  earnings history.
+- **Build:** `cd mobile && flutter pub get && flutter build apk --debug`
+- **Backend URL:** defaults to `http://10.0.2.2:8000/api/v1/` (emulator →
+  host). Override with `--dart-define=API_BASE_URL=...`.
+
+See [`mobile/README.md`](mobile/README.md) for full documentation, setup and
+testing instructions.
+
 ## 1. Supabase Setup
 ### Local Development
 1. Install Supabase CLI.
